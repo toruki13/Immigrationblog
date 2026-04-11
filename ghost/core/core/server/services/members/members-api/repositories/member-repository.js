@@ -38,6 +38,7 @@ const messages = {
 const SUBSCRIPTION_STATUS_TRIALING = 'trialing';
 
 const WELCOME_EMAIL_SOURCES = ['member'];
+const DUPLICATE_ENTRY_ERROR_CODES = ['SQLITE_CONSTRAINT', '23505'];
 
 /**
  * @typedef {object} ITokenService
@@ -471,7 +472,7 @@ module.exports = class MemberRepository {
                         attribution
                     }, {batch_id: options.batch_id});
                 } catch (err) {
-                    if (err.code !== 'ER_DUP_ENTRY' && err.code !== 'SQLITE_CONSTRAINT') {
+                    if (!DUPLICATE_ENTRY_ERROR_CODES.includes(err.code)) {
                         throw err;
                     }
                     throw new errors.ConflictError({

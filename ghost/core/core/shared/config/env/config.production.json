@@ -1,12 +1,11 @@
 {
     "database": {
-        "client": "mysql",
-        "connection": {
-            "host"     : "127.0.0.1",
-            "user"     : "root",
-            "password" : "",
-            "database" : "ghost"
-        }
+        "client": "pg"
+    },
+    "storage": {
+        "active": "S3Storage",
+        "media": "S3Storage",
+        "files": "S3Storage"
     },
     "paths": {
         "contentPath": "content/"

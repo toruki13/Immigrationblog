@@ -15,8 +15,7 @@ export class KnexPersistenceAdapter implements PersistenceAdapter {
         // entityType is the table name for Knex
         await this.db(entityType).insert(data);
 
-        // MySQL doesn't support returning(), so we need to fetch the inserted record
-        // Assuming the data has an 'id' field
+        // The test factories provide ids up front, so fetch the inserted row explicitly.
         const id = (data as {id?: string}).id;
         if (!id) {
             throw new Error('Cannot insert without an id field');

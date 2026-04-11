@@ -29,6 +29,11 @@ if [ -f /mnt/shared-config/.env.stripe ]; then
     fi
 fi
 
+PARSE_EMAIL_ADDRESS_BUILD="/home/ghost/ghost/parse-email-address/build/index.js"
+if [ ! -f "$PARSE_EMAIL_ADDRESS_BUILD" ]; then
+    echo "Building @tryghost/parse-email-address for the dev container"
+    (cd /home/ghost/ghost/parse-email-address && pnpm build)
+fi
+
 # Execute the CMD
 exec "$@"
-

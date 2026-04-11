@@ -1,8 +1,8 @@
 services:
-  mysql:
-    # Prevents mysql container from starting up
+  postgres:
+    # Prevents postgres container from starting up
     profiles:
-      - mysql
+      - postgres
 
   ghost-dev:
     volumes:
@@ -12,5 +12,5 @@ services:
       database__client: sqlite3
       database__connection__filename: content/data/ghost-dev.db
     depends_on:
-      mysql:
+      postgres:
         required: false

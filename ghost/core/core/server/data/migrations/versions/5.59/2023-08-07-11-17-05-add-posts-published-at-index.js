@@ -11,9 +11,13 @@ module.exports = createNonTransactionalMigration(
         if (DatabaseInfo.isSQLite(knex)) {
             const result = await knex.raw(`select * from sqlite_master where type = 'index' and tbl_name = 'posts' and name = '${INDEX_NAME}'`);
             hasIndex = (result.length !== 0);
-        } else {
+        } else if (DatabaseInfo.isMySQL(knex)) {
             const result = await knex.raw(`show index from posts where Key_name = '${INDEX_NAME}'`);
             hasIndex = (result[0].length !== 0);
+        } else {
+            // PostgreSQL
+            const result = await knex.raw(`SELECT indexname FROM pg_indexes WHERE tablename = 'posts' AND indexname = ?`, [INDEX_NAME]);
+            hasIndex = (result.rows.length !== 0);
         }
 
         if (hasIndex) {
@@ -33,9 +37,13 @@ module.exports = createNonTransactionalMigration(
         if (DatabaseInfo.isSQLite(knex)) {
             const result = await knex.raw(`select * from sqlite_master where type = 'index' and tbl_name = 'posts' and name = '${INDEX_NAME}'`);
             missingIndex = (result.length === 0);
-        } else {
+        } else if (DatabaseInfo.isMySQL(knex)) {
             const result = await knex.raw(`show index from posts where Key_name = '${INDEX_NAME}'`);
             missingIndex = (result[0].length === 0);
+        } else {
+            // PostgreSQL
+            const result = await knex.raw(`SELECT indexname FROM pg_indexes WHERE tablename = 'posts' AND indexname = ?`, [INDEX_NAME]);
+            missingIndex = (result.rows.length === 0);
         }
 
         if (missingIndex) {

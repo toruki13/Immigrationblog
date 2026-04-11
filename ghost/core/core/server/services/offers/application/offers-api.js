@@ -15,6 +15,8 @@ const messages = {
     offerNotFoundAfterDuplicateError: 'Tried to create duplicate offer for the Stripe coupon {couponId}, but could not find offer in database'
 };
 
+const DUPLICATE_ENTRY_ERROR_CODES = ['SQLITE_CONSTRAINT', '23505'];
+
 class OffersAPI {
     /**
      * @param {import('../offer-bookshelf-repository')} repository
@@ -300,7 +302,7 @@ class OffersAPI {
             } catch (err) {
                 // Handle race condition: another request may have created the offer
                 // between the check and save. If so, return the existing offer.
-                if (err.code === 'ER_DUP_ENTRY' || err.code === 'SQLITE_CONSTRAINT') {
+                if (DUPLICATE_ENTRY_ERROR_CODES.includes(err.code)) {
                     const createdOffer = await this.repository.getByStripeCouponId(coupon.id, txOptions);
                     if (createdOffer) {
                         return OfferMapper.toDTO(createdOffer);

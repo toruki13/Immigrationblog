@@ -13,7 +13,7 @@ export const DEV_COMPOSE_PROJECT = process.env.COMPOSE_PROJECT_NAME || 'ghost-de
 // compose.dev.yaml pins the network name explicitly, so this does not follow COMPOSE_PROJECT_NAME.
 export const DEV_NETWORK_NAME = 'ghost_dev';
 export const DEV_SHARED_CONFIG_VOLUME = `${DEV_COMPOSE_PROJECT}_shared-config`;
-export const DEV_PRIMARY_DATABASE = process.env.MYSQL_DATABASE || 'ghost_dev';
+export const DEV_PRIMARY_DATABASE = process.env.GHOST_DB_NAME || process.env.PGDATABASE || 'ghost_dev';
 
 /**
  * Caddyfile paths for different modes.
@@ -70,15 +70,11 @@ export const BASE_GHOST_ENV = [
     'server__port=2368',
 
     // Database configuration (database name is set per container)
-    'database__client=mysql2',
-    'database__connection__host=ghost-dev-mysql',
-    'database__connection__port=3306',
-    'database__connection__user=root',
-    'database__connection__password=root',
-
-    // Redis configuration
-    'adapters__cache__Redis__host=ghost-dev-redis',
-    'adapters__cache__Redis__port=6379',
+    'database__client=pg',
+    'database__connection__host=ghost-dev-postgres',
+    'database__connection__port=5432',
+    'database__connection__user=ghost',
+    'database__connection__password=ghost',
 
     // Email configuration
     'mail__transport=SMTP',

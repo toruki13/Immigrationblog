@@ -1,42 +1,41 @@
 name: ghost-dev
 
 services:
-  mysql:
-    image: mysql:8.4.5@sha256:679e7e924f38a3cbb62a3d7df32924b83f7321a602d3f9f967c01b3df18495d6
-    container_name: ghost-dev-mysql
-    command: --innodb-buffer-pool-size=1G --innodb-log-buffer-size=500M --innodb-change-buffer-max-size=50 --innodb-flush-log-at-trx_commit=0 --innodb-flush-method=O_DIRECT
+  postgres:
+    image: postgres:16
+    container_name: ghost-dev-postgres
     ports:
-      - "3306:3306"
+      - "5433:5432"
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-ghost_dev}
-      MYSQL_USER: ghost
-      MYSQL_PASSWORD: ghost
+      POSTGRES_USER: ghost
+      POSTGRES_PASSWORD: ghost
+      POSTGRES_DB: ghost_dev
     volumes:
-      - mysql-data:/var/lib/mysql
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysql", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}", "-e", "SELECT 1"]
+      test: ["CMD-SHELL", "pg_isready -U ghost -d ghost_dev"]
       interval: 1s
       retries: 120
       timeout: 5s
       start_period: 10s
 
-  redis:
-    image: redis:7.0@sha256:352c1fdadc91926edda08f45aeb3f27f37194c2f14101229c0523a11195c96e3
-    container_name: ghost-dev-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test:
-        - CMD
-        - redis-cli
-        - --raw
-        - incr
-        - ping
-      interval: 1s
-      retries: 120
+  # --- Redis disabled (using MemoryCache) ---
+  # redis:
+  #   image: redis:7.0@sha256:352c1fdadc91926edda08f45aeb3f27f37194c2f14101229c0523a11195c96e3
+  #   container_name: ghost-dev-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   healthcheck:
+  #     test:
+  #       - CMD
+  #       - redis-cli
+  #       - --raw
+  #       - incr
+  #       - ping
+  #     interval: 1s
+  #     retries: 120
 
   mailpit:
     image: axllent/mailpit@sha256:0b5c5f7ffd3c93474baa7fd3869c1462e5a3d03256ed0933dfc0e7d81d794036
@@ -57,6 +56,8 @@ services:
       context: ./
       dockerfile: docker/ghost-dev/Dockerfile
     container_name: ghost-dev
+    env_file:
+      - .env
     working_dir: /home/ghost/ghost/core
     command: ["pnpm", "dev"]
     volumes:
@@ -72,24 +73,26 @@ services:
       NODE_ENV: development
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
       DEBUG: ${DEBUG:-}
-      database__client: mysql2
-      database__connection__host: mysql
-      database__connection__user: root
-      database__connection__password: ${MYSQL_ROOT_PASSWORD:-root}
-      database__connection__database: ${MYSQL_DATABASE:-ghost_dev}
+      DATABASE_URL: ${GHOST_DATABASE_URL:-}
+      database__client: pg
+      database__connection__host: ${GHOST_DB_HOST:-postgres}
+      database__connection__port: ${GHOST_DB_PORT:-5432}
+      database__connection__user: ${GHOST_DB_USER:-ghost}
+      database__connection__password: ${GHOST_DB_PASSWORD:-ghost}
+      database__connection__database: ${GHOST_DB_NAME:-ghost_dev}
       server__host: 0.0.0.0
       server__port: 2368
       mail__transport: SMTP
       mail__options__host: mailpit
       mail__options__port: 1025
-      # Redis cache (optional)
-      adapters__cache__Redis__host: redis
-      adapters__cache__Redis__port: 6379
+      # Redis cache (disabled — using MemoryCache)
+      # adapters__cache__Redis__host: redis
+      # adapters__cache__Redis__port: 6379
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
+      # redis:
+      #   condition: service_healthy
       mailpit:
         condition: service_healthy
       stripe:
@@ -137,8 +140,8 @@ services:
       retries: 120
 
 volumes:
-  mysql-data:
-  redis-data:
+  postgres-data:
+  # redis-data:
   shared-config:
   ghost-dev-data:
   ghost-dev-images:

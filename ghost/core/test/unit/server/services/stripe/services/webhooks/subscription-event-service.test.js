@@ -28,7 +28,7 @@ describe('SubscriptionEventService', function () {
         }
     });
 
-    it('should throw ConflictError if linkSubscription fails with ER_DUP_ENTRY', async function () {
+    it('should throw ConflictError if linkSubscription fails with 23505', async function () {
         const subscription = {
             items: {
                 data: [{price: {id: 'price_123'}}]
@@ -37,7 +37,7 @@ describe('SubscriptionEventService', function () {
         };
 
         memberRepository.get.resolves({id: 'member_123'});
-        memberRepository.linkSubscription.rejects({code: 'ER_DUP_ENTRY'});
+        memberRepository.linkSubscription.rejects({code: '23505'});
 
         try {
             await service.handleSubscriptionEvent(subscription);

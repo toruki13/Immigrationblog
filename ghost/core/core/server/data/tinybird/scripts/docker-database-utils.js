@@ -3,7 +3,7 @@
  * Docker Database Utilities for Ghost Analytics Scripts
  * Provides database operations for the Docker-based development environment
  *
- * Connects directly to MySQL when running outside Docker (from host machine)
+ * Connects directly to PostgreSQL when running outside Docker (from host machine)
  */
 
 const path = require('path');
@@ -13,16 +13,16 @@ class DockerDatabaseUtils {
         this.knex = null;
         this.initialized = false;
         this.options = {
-            host: options.host || process.env.MYSQL_HOST || 'localhost',
-            port: options.port || process.env.MYSQL_PORT || 3306,
-            user: options.user || process.env.MYSQL_USER || 'root',
-            password: options.password || process.env.MYSQL_PASSWORD || 'root',
-            database: options.database || process.env.MYSQL_DATABASE || 'ghost_dev'
+            host: options.host || process.env.GHOST_DB_HOST || process.env.PGHOST || 'localhost',
+            port: options.port || process.env.GHOST_DB_PORT || process.env.PGPORT || 5433,
+            user: options.user || process.env.GHOST_DB_USER || process.env.PGUSER || 'ghost',
+            password: options.password || process.env.GHOST_DB_PASSWORD || process.env.PGPASSWORD || 'ghost',
+            database: options.database || process.env.GHOST_DB_NAME || process.env.PGDATABASE || 'ghost_dev'
         };
     }
 
     /**
-     * Initialize the knex connection to Docker MySQL
+     * Initialize the knex connection to Docker PostgreSQL
      */
     async init() {
         if (this.initialized) {
@@ -41,7 +41,7 @@ class DockerDatabaseUtils {
             }
 
             this.knex = knex({
-                client: 'mysql2',
+                client: 'pg',
                 connection: {
                     host: this.options.host,
                     port: this.options.port,
@@ -49,6 +49,7 @@ class DockerDatabaseUtils {
                     password: this.options.password,
                     database: this.options.database
                 },
+                searchPath: ['public'],
                 pool: {min: 0, max: 5}
             });
 
@@ -200,9 +201,9 @@ class DockerDatabaseUtils {
             ]);
 
             return {
-                posts: parseInt(posts.count),
-                members: parseInt(members.count),
-                pages: parseInt(pages.count)
+                posts: parseInt(posts.count, 10),
+                members: parseInt(members.count, 10),
+                pages: parseInt(pages.count, 10)
             };
         } catch (error) {
             console.warn('Could not fetch database stats:', error.message);

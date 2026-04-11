@@ -19,9 +19,12 @@ WORKDIR /home/ghost
 
 # Copy package files for dependency installation
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY patches patches
 COPY ghost/core/package.json ghost/core/package.json
 COPY ghost/i18n/package.json ghost/i18n/package.json
 COPY ghost/parse-email-address/package.json ghost/parse-email-address/package.json
+COPY .github/hooks .github/hooks
+COPY .github/scripts/enforce-package-manager.js .github/scripts/enforce-package-manager.js
 
 # Install dependencies
 # Note: Dependencies are installed at build time, but source code is mounted at runtime.

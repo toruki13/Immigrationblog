@@ -9,7 +9,7 @@ export const fixtures = {
     config: {
         version: '5.x',
         environment: 'testing',
-        database: 'mysql8',
+        database: 'pg',
         mail: 'SMTP',
         labs: {},
         clientExtensions: {},

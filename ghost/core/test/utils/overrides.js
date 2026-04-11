@@ -10,7 +10,6 @@ process.env.WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'TEST_STRIPE_WEBHOOK_
 // CI or the user) are respected.
 const sessionId = crypto.randomBytes(4).toString('hex');
 const sqliteGenerated = !process.env.database__connection__filename;
-const mysqlGenerated = !process.env.database__connection__database;
 process.env.database__connection__filename = process.env.database__connection__filename || `/tmp/ghost-test-${sessionId}.db`;
 process.env.database__connection__database = process.env.database__connection__database || `ghost_testing_${sessionId}`;
 
@@ -125,19 +124,21 @@ mochaHooks.afterAll = async function () {
         await originalAfterAll();
     }
 
-    // Clean up the session-specific test database (only if we generated it)
-    if (process.env.NODE_ENV === 'testing-mysql') {
-        try {
-            const db = require('../../core/server/data/db');
-            if (mysqlGenerated) {
-                await db.knex.raw(`DROP DATABASE IF EXISTS \`${process.env.database__connection__database}\``);
-            }
+    try {
+        const db = require('../../core/server/data/db');
+        const client = db.knex?.client?.config?.client;
+
+        if (client && client !== 'sqlite3') {
             await db.knex.destroy();
-        } catch (err) {
-            // eslint-disable-next-line no-console
-            console.warn('Failed to clean up test database:', err.message);
+            return;
         }
-    } else {
+    } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('Failed to clean up test database:', err.message);
+        return;
+    }
+
+    {
         try {
             const fs = require('fs-extra');
             if (sqliteGenerated) {

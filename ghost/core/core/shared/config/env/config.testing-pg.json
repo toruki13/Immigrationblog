@@ -7,12 +7,13 @@
         "port": 9417
     },
     "database": {
-        "client": "mysql",
+        "client": "pg",
         "connection": {
-            "host"     : "127.0.0.1",
-            "user"     : "root",
-            "password" : "",
-            "database" : "ghost_testing"
+            "host": "127.0.0.1",
+            "port": 5433,
+            "user": "ghost",
+            "password": "ghost",
+            "database": "ghost_testing"
         }
     },
     "logging": {
@@ -50,19 +51,19 @@
             "minWait": 3600000,
             "maxWait": 3600000,
             "lifetime": 3600,
-            "freeRetries":4
+            "freeRetries": 4
         },
         "global_block": {
             "minWait": 3600000,
             "maxWait": 3600000,
             "lifetime": 3600,
-            "freeRetries":4
+            "freeRetries": 4
         },
         "private_block": {
             "minWait": 3600000,
             "maxWait": 3600000,
             "lifetime": 3600,
-            "freeRetries":99
+            "freeRetries": 99
         },
         "webmentions_block": {
             "minWait": 100000,

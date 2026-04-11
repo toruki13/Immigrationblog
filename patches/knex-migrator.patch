@@ -1,0 +1,82 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+deleted file mode 100644
+index 6033d6b84d30e56d6fe6f40b7c7c6b18430a5594..0000000000000000000000000000000000000000
+diff --git a/lib/database.js b/lib/database.js
+index b755b9ecb8ee47c71af8b432d9a09f7a5d88d649..bda45d8ae7d9c7a4f918b0f8ea606bd55c668627 100644
+--- a/lib/database.js
++++ b/lib/database.js
+@@ -33,6 +33,10 @@ exports.connect = function connect(options) {
+         delete options.connection.filename;
+     }
+ 
++    if (client === 'pg') {
++        options.searchPath = options.searchPath || ['public'];
++    }
++
+     return knex(options);
+ };
+ 
+@@ -108,6 +112,28 @@ exports.createDatabaseIfNotExist = function createDatabaseIfNotExist(dbConfig) {
+     // @NOTE: Skip, because sqlite3 is a file based database.
+     if (DatabaseInfo.isSQLiteConfig(dbConfig)) {
+         return Promise.resolve();
++    } else if (dbConfig.client === 'pg') {
++        // PostgreSQL: assume database already exists (created by Railway/Docker)
++        const connection = exports.connect({
++            client: dbConfig.client,
++            connection: dbConfig.connection,
++            searchPath: ['public']
++        });
++        return exports.ensureConnectionWorks(connection)
++            .then(function () {
++                debug('PostgreSQL database exists: ' + name);
++                return Promise.resolve();
++            })
++            .finally(function () {
++                return new Promise(function (resolve, reject) {
++                    connection.destroy(function (err) {
++                        if (err) {
++                            return reject(err);
++                        }
++                        resolve();
++                    });
++                });
++            });
+     } else if (!DatabaseInfo.isMySQLConfig(dbConfig)) {
+         return Promise.reject(new errors.KnexMigrateError({
+             message: 'Database is not supported.'
+@@ -202,6 +228,15 @@ exports.drop = function drop(options) {
+                     err: err
+                 }));
+             });
++    } else if (dbConfig.client === 'pg') {
++        debug('Drop all tables in PostgreSQL database: ' + dbConfig.connection.database);
++        return connection.raw(`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`)
++            .then(function (result) {
++                return sequence(result.rows.map(row => () => {
++                    debug('Drop table: ' + row.tablename);
++                    return connection.schema.dropTableIfExists(row.tablename);
++                }));
++            });
+     } else {
+         return Promise.reject(new errors.KnexMigrateError({
+             message: 'Database client not supported: ' + dbConfig.client
+diff --git a/migrations/add-primary-key-to-lock-table.js b/migrations/add-primary-key-to-lock-table.js
+index c0a73e84dac7537e4df6bbda64f46e2e0a8efbe1..9d8240e19061d22846f42f9fc293def9a883570b 100644
+--- a/migrations/add-primary-key-to-lock-table.js
++++ b/migrations/add-primary-key-to-lock-table.js
+@@ -37,7 +37,7 @@ function addPrimaryKey(tableName, columns, knex) {
+     return knex.schema.table(tableName, function (table) {
+         table.primary(columns);
+     }).catch((err) => {
+-        if (err.code === 'ER_MULTIPLE_PRI_KEY') {
++        if (err.code === 'ER_MULTIPLE_PRI_KEY' || err.code === '42P16') {
+             debug(`Primary key constraint for: ${columns} already exists for table: ${tableName}`);
+             return;
+         }
+diff --git a/test/config/env/config.testing-mysql.json b/test/config/env/config.testing-mysql.json
+deleted file mode 100644
+index eab0ded0a4146c9d2d651431860551bd42765c15..0000000000000000000000000000000000000000
+diff --git a/test/config/env/config.testing.json b/test/config/env/config.testing.json
+deleted file mode 100644
+index 12dd3b137f597dee03fb912413643b42bc5a0da0..0000000000000000000000000000000000000000

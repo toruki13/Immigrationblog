@@ -5,6 +5,8 @@ const DomainEvents = require('@tryghost/domain-events');
 const logging = require('@tryghost/logging');
 const models = require('../../models');
 
+const DUPLICATE_ENTRY_ERROR_CODES = ['23505'];
+
 /**
  * @typedef {object} IMailgunAPIClient
  * @prop {(email: string) => Promise<any>} removeBounce
@@ -138,7 +140,7 @@ class MailgunEmailSuppressionList extends AbstractEmailSuppressionList {
                     reason: reason
                 }, event.timestamp));
             } catch (err) {
-                if (err.code !== 'ER_DUP_ENTRY') {
+                if (!DUPLICATE_ENTRY_ERROR_CODES.includes(err.code)) {
                     logging.error(err);
                 }
             }

@@ -90,7 +90,10 @@
       "sharp",
       "sqlite3",
       "ssh2"
-    ]
+    ],
+    "patchedDependencies": {
+      "knex-migrator": "patches/knex-migrator.patch"
+    }
   },
   "devDependencies": {
     "@actions/core": "3.0.0",
@@ -109,7 +112,6 @@
     "semver": "7.7.4",
     "typescript": "5.9.3"
   },
-  "dependencies": {},
   "nx": {
     "includedScripts": [],
     "targets": {

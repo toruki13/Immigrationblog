@@ -1,5 +1,7 @@
 const moment = require('moment-timezone');
 const logging = require('@tryghost/logging');
+
+const DUPLICATE_ENTRY_ERROR_CODES = ['SQLITE_CONSTRAINT', '23505'];
 const config = require('../../../shared/config');
 
 class EmailEventStorage {
@@ -199,7 +201,7 @@ class EmailEventStorage {
             // Remove from Mailgun's suppression list so it doesn't affect other sites on the same domain
             await this.#emailSuppressionList.removeComplaint(event.email);
         } catch (err) {
-            if (err.code !== 'ER_DUP_ENTRY' && err.code !== 'SQLITE_CONSTRAINT') {
+            if (!DUPLICATE_ENTRY_ERROR_CODES.includes(err.code)) {
                 logging.error(err);
             }
         }

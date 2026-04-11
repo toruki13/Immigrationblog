@@ -29,7 +29,7 @@ SITE_UUID=$(curl -s -H "Authorization: Bearer $TB_TOKEN" \
     "${TB_HOST}/v0/sql?q=SELECT%20site_uuid%20FROM%20_mv_hits%20WHERE%20site_uuid%20!=%20'mock_site_uuid'%20LIMIT%201" | tr -d '\n')
 if [ -z "$SITE_UUID" ] || [ "$SITE_UUID" = "" ]; then
     # Fallback to Ghost database
-    SITE_UUID=$(docker exec ghost-dev-mysql mysql -uroot -proot ghost_dev -N -e "SELECT value FROM settings WHERE \`key\`='db_hash'" 2>/dev/null | tr -d '\r\n')
+    SITE_UUID=$(docker exec ghost-dev-postgres psql -U ghost -d ghost_dev -At -c "SELECT value FROM settings WHERE \"key\"='site_uuid'" 2>/dev/null | tr -d '\r\n')
 fi
 if [ -z "$SITE_UUID" ]; then
     echo "Error: Could not get site_uuid"

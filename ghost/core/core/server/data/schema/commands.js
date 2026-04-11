@@ -204,11 +204,7 @@ async function addIndex(tableName, columns, transaction = db.knex) {
             table.index(columns);
         });
     } catch (err) {
-        if (err.code === 'SQLITE_ERROR') {
-            logging.warn(`Index for '${columns}' already exists for table '${tableName}'`);
-            return;
-        }
-        if (err.code === 'ER_DUP_KEYNAME') {
+        if (err.code === 'SQLITE_ERROR' || err.code === 'ER_DUP_KEYNAME' || err.code === '42P07') {
             logging.warn(`Index for '${columns}' already exists for table '${tableName}'`);
             return;
         }
@@ -231,11 +227,7 @@ async function dropIndex(tableName, columns, transaction = db.knex) {
             table.dropIndex(columns);
         });
     } catch (err) {
-        if (err.code === 'SQLITE_ERROR') {
-            logging.warn(`Constraint for '${columns}' does not exist for table '${tableName}'`);
-            return;
-        }
-        if (err.code === 'ER_CANT_DROP_FIELD_OR_KEY') {
+        if (err.code === 'SQLITE_ERROR' || err.code === 'ER_CANT_DROP_FIELD_OR_KEY' || err.code === '42704') {
             logging.warn(`Constraint for '${columns}' does not exist for table '${tableName}'`);
             return;
         }
@@ -258,11 +250,7 @@ async function addUnique(tableName, columns, transaction = db.knex) {
             table.unique(columns);
         });
     } catch (err) {
-        if (err.code === 'SQLITE_ERROR') {
-            logging.warn(`Constraint for '${columns}' already exists for table '${tableName}'`);
-            return;
-        }
-        if (err.code === 'ER_DUP_KEYNAME') {
+        if (err.code === 'SQLITE_ERROR' || err.code === 'ER_DUP_KEYNAME' || err.code === '42P07' || err.code === '23505') {
             logging.warn(`Constraint for '${columns}' already exists for table '${tableName}'`);
             return;
         }
@@ -285,11 +273,7 @@ async function dropUnique(tableName, columns, transaction = db.knex) {
             table.dropUnique(columns);
         });
     } catch (err) {
-        if (err.code === 'SQLITE_ERROR') {
-            logging.warn(`Constraint for '${columns}' does not exist for table '${tableName}'`);
-            return;
-        }
-        if (err.code === 'ER_CANT_DROP_FIELD_OR_KEY') {
+        if (err.code === 'SQLITE_ERROR' || err.code === 'ER_CANT_DROP_FIELD_OR_KEY' || err.code === '42704') {
             logging.warn(`Constraint for '${columns}' does not exist for table '${tableName}'`);
             return;
         }
@@ -376,7 +360,7 @@ async function addForeign({fromTable, fromColumn, toTable, toColumn, constraintN
             }
         }
     } catch (err) {
-        if (err.code === 'ER_DUP_KEY' || err.code === 'ER_FK_DUP_KEY' || err.code === 'ER_FK_DUP_NAME') {
+        if (err.code === 'ER_DUP_KEY' || err.code === 'ER_FK_DUP_KEY' || err.code === 'ER_FK_DUP_NAME' || err.code === '23505' || err.code === '42710') {
             logging.warn(`Skipped adding foreign key from ${fromTable}.${fromColumn} to ${toTable}.${toColumn} - already exists`);
             return;
         }
@@ -425,7 +409,7 @@ async function dropForeign({fromTable, fromColumn, toTable, toColumn, constraint
             }
         }
     } catch (err) {
-        if (err.code === 'ER_CANT_DROP_FIELD_OR_KEY') {
+        if (err.code === 'ER_CANT_DROP_FIELD_OR_KEY' || err.code === '42704') {
             logging.warn(`Skipped dropping foreign key from ${fromTable}.${fromColumn} to ${toTable}.${toColumn} - does not exist`);
             return;
         }
@@ -473,7 +457,7 @@ async function addPrimaryKey(tableName, columns, transaction = db.knex) {
             table.primary(columns);
         });
     } catch (err) {
-        if (err.code === 'ER_MULTIPLE_PRI_KEY') {
+        if (err.code === 'ER_MULTIPLE_PRI_KEY' || err.code === '42P16') {
             logging.warn(`Primary key constraint for '${columns}' already exists for table '${tableName}'`);
             return;
         }
@@ -526,6 +510,9 @@ async function getTables(transaction = db.knex) {
     } else if (client === 'mysql2') {
         const response = await transaction.raw('show tables');
         return _.flatten(_.map(response[0], entry => _.values(entry)));
+    } else if (client === 'pg') {
+        const response = await transaction.raw(`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`);
+        return response.rows.map(row => row.tablename);
     }
 
     return Promise.reject(tpl(messages.noSupportForDatabase, {client: client}));
@@ -544,6 +531,9 @@ async function getIndexes(table, transaction = db.knex) {
     } else if (client === 'mysql2') {
         const response = await transaction.raw(`SHOW INDEXES from ${table}`);
         return _.flatten(_.map(response[0], 'Key_name'));
+    } else if (client === 'pg') {
+        const response = await transaction.raw(`SELECT indexname FROM pg_indexes WHERE tablename = ?`, [table]);
+        return response.rows.map(row => row.indexname);
     }
 
     return Promise.reject(tpl(messages.noSupportForDatabase, {client: client}));
@@ -562,6 +552,12 @@ async function getColumns(table, transaction = db.knex) {
     } else if (client === 'mysql2') {
         const response = await transaction.raw(`SHOW COLUMNS from ${table}`);
         return _.flatten(_.map(response[0], 'Field'));
+    } else if (client === 'pg') {
+        const response = await transaction.raw(
+            `SELECT column_name FROM information_schema.columns WHERE table_name = ? AND table_schema = 'public'`,
+            [table]
+        );
+        return response.rows.map(row => row.column_name);
     }
 
     return Promise.reject(tpl(messages.noSupportForDatabase, {client: client}));

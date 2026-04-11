@@ -1,5 +1,6 @@
 const logging = require('@tryghost/logging');
 const ObjectID = require('bson-objectid').default;
+const DatabaseInfo = require('@tryghost/database-info');
 
 const {createTransactionalMigration} = require('../../utils');
 
@@ -64,12 +65,30 @@ module.exports = createTransactionalMigration(
             .update({actor_id: newId});
 
         // 5. Update user_id inside session_data JSON
-        await knex.raw(`
-            UPDATE sessions
-            SET session_data = JSON_SET(session_data, '$.user_id', ?)
-            WHERE JSON_VALID(session_data)
-            AND JSON_EXTRACT(session_data, '$.user_id') = ?
-        `, [newId, LEGACY_HARDCODED_USER_ID]);
+        if (DatabaseInfo.isMySQL(knex)) {
+            await knex.raw(`
+                UPDATE sessions
+                SET session_data = JSON_SET(session_data, '$.user_id', ?)
+                WHERE JSON_VALID(session_data)
+                AND JSON_EXTRACT(session_data, '$.user_id') = ?
+            `, [newId, LEGACY_HARDCODED_USER_ID]);
+        } else {
+            // PostgreSQL/SQLite: parse JSON in JS
+            const sessions = await knex('sessions').select('id', 'session_data').whereNotNull('session_data');
+            await sessions.reduce(async (previous, session) => {
+                await previous;
+
+                try {
+                    const data = JSON.parse(session.session_data);
+                    if (data.user_id === LEGACY_HARDCODED_USER_ID) {
+                        data.user_id = newId;
+                        await knex('sessions').where('id', session.id).update({session_data: JSON.stringify(data)});
+                    }
+                } catch (e) {
+                    // Skip invalid JSON
+                }
+            }, Promise.resolve());
+        }
 
         // Step 3: Clean up the now redundant user record identified by the
         // legacy user ID as there should be no references to it anymore

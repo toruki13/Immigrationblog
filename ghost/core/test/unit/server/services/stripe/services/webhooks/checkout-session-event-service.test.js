@@ -349,7 +349,7 @@ describe('CheckoutSessionEventService', function () {
             sinon.assert.calledWith(memberRepository.linkSubscription, {id: 'member_123', subscription: updatedSubscription});
         });
 
-        it('if linkSubscription fails with ER_DUP_ENTRY, it should throw ConflictError', async function () {
+        it('if linkSubscription fails with 23505, it should throw ConflictError', async function () {
             const service = createService();
             const session = {setup_intent: 'si_123'};
             const setupIntent = {metadata: {customer_id: 'cust_123', subscription_id: 'sub_123'}, payment_method: 'pm_123'};
@@ -359,7 +359,7 @@ describe('CheckoutSessionEventService', function () {
             api.getSetupIntent.resolves(setupIntent);
             memberRepository.get.resolves(member);
             api.updateSubscriptionDefaultPaymentMethod.resolves(updatedSubscription);
-            memberRepository.linkSubscription.rejects({code: 'ER_DUP_ENTRY'});
+            memberRepository.linkSubscription.rejects({code: '23505'});
 
             try {
                 await service.handleSetupEvent(session);
@@ -512,7 +512,7 @@ describe('CheckoutSessionEventService', function () {
             api.getSetupIntent.resolves(setupIntent);
             memberRepository.get.resolves(member);
             api.updateSubscriptionDefaultPaymentMethod.resolves(updatedSubscription);
-            memberRepository.linkSubscription.rejects({code: 'ER_DUP_ENTRY'});
+            memberRepository.linkSubscription.rejects({code: '23505'});
 
             try {
                 await service.handleSetupEvent(session);
@@ -523,7 +523,7 @@ describe('CheckoutSessionEventService', function () {
             }
         });
 
-        it('should throw ConflictError if linkSubscription fails with ER_DUP_ENTRY', async function () {
+        it('should throw ConflictError if linkSubscription fails with 23505', async function () {
             const service = createService();
             const session = {setup_intent: 'si_123'};
             const setupIntent = {metadata: {customer_id: 'cust_123', subscription_id: 'sub_123'}, payment_method: 'pm_123'};
@@ -533,7 +533,7 @@ describe('CheckoutSessionEventService', function () {
             api.getSetupIntent.resolves(setupIntent);
             memberRepository.get.resolves(member);
             api.updateSubscriptionDefaultPaymentMethod.resolves(updatedSubscription);
-            memberRepository.linkSubscription.rejects({code: 'ER_DUP_ENTRY'});
+            memberRepository.linkSubscription.rejects({code: '23505'});
 
             try {
                 await service.handleSetupEvent(session);

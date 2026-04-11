@@ -15,10 +15,19 @@ module.exports = createTransactionalMigration(
         }
 
         // All events that happened within 15 minutes of each other will be linked
-        const rows = await knex('members_created_events as m')
-            .select('m.id as m_id', 's.id as s_id', 'm.member_id as member_id', 's.subscription_id as subscription_id')
-            .join('members_subscription_created_events AS s', 's.member_id', 'm.member_id')
-            .whereRaw('TIMESTAMPDIFF(MINUTE, s.created_at, m.created_at) between -15 and 15');
+        let rows;
+        if (DatabaseInfo.isMySQL(knex)) {
+            rows = await knex('members_created_events as m')
+                .select('m.id as m_id', 's.id as s_id', 'm.member_id as member_id', 's.subscription_id as subscription_id')
+                .join('members_subscription_created_events AS s', 's.member_id', 'm.member_id')
+                .whereRaw('TIMESTAMPDIFF(MINUTE, s.created_at, m.created_at) between -15 and 15');
+        } else {
+            // PostgreSQL
+            rows = await knex('members_created_events as m')
+                .select('m.id as m_id', 's.id as s_id', 'm.member_id as member_id', 's.subscription_id as subscription_id')
+                .join('members_subscription_created_events AS s', 's.member_id', 'm.member_id')
+                .whereRaw('ABS(EXTRACT(EPOCH FROM (m.created_at - s.created_at)) / 60) <= 15');
+        }
 
         if (!rows.length) {
             logging.info('Did not find linkable members_created_events and members_subscription_created_events');

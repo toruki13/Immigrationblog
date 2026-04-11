@@ -27,7 +27,7 @@ const beforeSend = function (event, hint) {
                 }
             }
 
-            // This is a mysql2 error — add some additional context
+            // This is a SQL driver error, add some additional context
             if (exception.sql) {
                 const sql = exception.sql;
                 const errno = exception.errno ?? null;
@@ -39,7 +39,7 @@ const beforeSend = function (event, hint) {
                     event.exception.values[0].type = `SQL Error ${errno}: ${sqlErrorCode}`;
                     event.exception.values[0].value = sqlMessage;
                     event.contexts = event.contexts || {};
-                    event.contexts.mysql = {
+                    event.contexts.sql = {
                         errno: errno,
                         code: sqlErrorCode,
                         sql: sql,

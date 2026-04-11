@@ -446,12 +446,12 @@ describe('OffersAPI', function () {
             assert.equal(result.code, coupon.id);
         });
 
-        it('handles race condition with ER_DUP_ENTRY by returning existing offer', async function () {
+        it('handles race condition with 23505 by returning existing offer', async function () {
             const existingOffer = createMockOffer('race-winner-offer-id');
             const getByStripeCouponIdStub = sinon.stub();
 
             // First call returns null (offer doesn't exist yet)
-            // Second call (after ER_DUP_ENTRY) returns the offer created by another request
+            // Second call (after 23505) returns the offer created by another request
             getByStripeCouponIdStub.onFirstCall().resolves(null);
             getByStripeCouponIdStub.onSecondCall().resolves(existingOffer);
 
@@ -461,8 +461,8 @@ describe('OffersAPI', function () {
                 existsByName: sinon.stub().resolves(false)
             });
 
-            // Simulate duplicate entry error (MySQL)
-            repository.save.rejects({code: 'ER_DUP_ENTRY'});
+            // Simulate duplicate entry error (PostgreSQL)
+            repository.save.rejects({code: '23505'});
 
             const api = new OffersAPI(/** @type {OfferBookshelfRepository} */ (/** @type {unknown} */ (repository)));
             const coupon = createMockCoupon('coupon_race');
@@ -505,7 +505,7 @@ describe('OffersAPI', function () {
         it('throws readable error when duplicate entry occurs but offer not found', async function () {
             const getByStripeCouponIdStub = sinon.stub();
             // First call returns null (offer doesn't exist)
-            // Second call (after ER_DUP_ENTRY) also returns null (unexpected!)
+            // Second call (after 23505) also returns null (unexpected!)
             getByStripeCouponIdStub.onFirstCall().resolves(null);
             getByStripeCouponIdStub.onSecondCall().resolves(null);
 
@@ -517,7 +517,7 @@ describe('OffersAPI', function () {
 
             // Simulate duplicate entry error
             const dupError = new Error('Duplicate entry');
-            dupError.code = 'ER_DUP_ENTRY';
+            dupError.code = '23505';
             repository.save.rejects(dupError);
 
             const api = new OffersAPI(/** @type {OfferBookshelfRepository} */ (/** @type {unknown} */ (repository)));

@@ -113,14 +113,14 @@ function createSetNullableMigration(table, column, options = {}) {
             }
 
             logging.info(`Dropping nullable: ${table}.${column}${options.disableForeignKeyChecks ? ' with foreign keys disabled' : ''}`);
-            if (options.disableForeignKeyChecks) {
+            if (options.disableForeignKeyChecks && DatabaseInfo.isMySQL(knex)) {
                 await knex.raw('SET FOREIGN_KEY_CHECKS=0;').transacting(knex);
             }
 
             try {
                 await commands.dropNullable(table, column, knex);
             } finally {
-                if (options.disableForeignKeyChecks) {
+                if (options.disableForeignKeyChecks && DatabaseInfo.isMySQL(knex)) {
                     await knex.raw('SET FOREIGN_KEY_CHECKS=1;').transacting(knex);
                 }
             }
@@ -186,6 +186,13 @@ async function isColumnNotNullable(table, column, knex) {
         const response = await knex.raw('PRAGMA table_info(??)', [table]);
         const columnInfo = response.find(col => col.name === column);
         return columnInfo && columnInfo.notnull === 1;
+    } else if (client === 'pg') {
+        const response = await knex.raw(
+            `SELECT is_nullable FROM information_schema.columns WHERE table_name = ? AND column_name = ?`,
+            [table, column]
+        );
+        const columnInfo = response.rows[0];
+        return columnInfo && columnInfo.is_nullable === 'NO';
     } else {
         const response = await knex.raw('SHOW COLUMNS FROM ??', [table]);
         const columnInfo = response[0].find(col => col.Field === column);
@@ -207,6 +214,13 @@ async function isColumnNullable(table, column, knex) {
         const response = await knex.raw('PRAGMA table_info(??)', [table]);
         const columnInfo = response.find(col => col.name === column);
         return columnInfo && columnInfo.notnull === 0;
+    } else if (client === 'pg') {
+        const response = await knex.raw(
+            `SELECT is_nullable FROM information_schema.columns WHERE table_name = ? AND column_name = ?`,
+            [table, column]
+        );
+        const columnInfo = response.rows[0];
+        return columnInfo && columnInfo.is_nullable === 'YES';
     } else {
         const response = await knex.raw('SHOW COLUMNS FROM ??', [table]);
         const columnInfo = response[0].find(col => col.Field === column);
@@ -243,14 +257,14 @@ function createDropNullableMigration(table, column, options = {}) {
 
             logging.info(`Dropping nullable: ${table}.${column}${options.disableForeignKeyChecks ? ' with foreign keys disabled' : ''}`);
 
-            if (options.disableForeignKeyChecks) {
+            if (options.disableForeignKeyChecks && DatabaseInfo.isMySQL(knex)) {
                 await knex.raw('SET FOREIGN_KEY_CHECKS=0;').transacting(knex);
             }
 
             try {
                 await commands.dropNullable(table, column, knex);
             } finally {
-                if (options.disableForeignKeyChecks) {
+                if (options.disableForeignKeyChecks && DatabaseInfo.isMySQL(knex)) {
                     await knex.raw('SET FOREIGN_KEY_CHECKS=1;').transacting(knex);
                 }
             }

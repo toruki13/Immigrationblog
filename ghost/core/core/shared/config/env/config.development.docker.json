@@ -1,11 +1,11 @@
 {
     "database": {
-        "client": "mysql",
+        "client": "pg",
         "connection": {
-            "host": "mysql",
-            "user": "root",
-            "password": "root",
-            "database": "ghost"
+            "host": "postgres",
+            "user": "ghost",
+            "password": "ghost",
+            "database": "ghost_dev"
         }
     },
     "mail": {
@@ -14,12 +14,6 @@
         "options": {
             "host": "mailpit",
             "port": 1025
-        }
-    },
-    "adapters": {
-        "Redis": {
-            "host": "redis",
-            "port": 6379
         }
     },
     "server": {

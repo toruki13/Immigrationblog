@@ -48,13 +48,13 @@ Use `pnpm reset:data` when running Ghost locally without Docker.
 
 ### Database Connection
 
-Connects to MySQL at `localhost:3306`. Override via environment variables:
+Connects to PostgreSQL at `localhost:5433`. Override via environment variables:
 
-- `MYSQL_HOST` (default: localhost)
-- `MYSQL_PORT` (default: 3306)
-- `MYSQL_USER` (default: root)
-- `MYSQL_PASSWORD` (default: root)
-- `MYSQL_DATABASE` (default: ghost_dev)
+- `GHOST_DB_HOST` or `PGHOST` (default: localhost)
+- `GHOST_DB_PORT` or `PGPORT` (default: 5433)
+- `GHOST_DB_USER` or `PGUSER` (default: ghost)
+- `GHOST_DB_PASSWORD` or `PGPASSWORD` (default: ghost)
+- `GHOST_DB_NAME` or `PGDATABASE` (default: ghost_dev)
 
 ### Tinybird Connection
 
@@ -68,6 +68,6 @@ Reads tokens from Docker volume automatically. Override via:
 
 **"Could not retrieve Tinybird token"** - Ensure analytics is running: `pnpm dev:analytics`
 
-**"Database connection failed"** - Check MySQL is running: `docker ps | grep mysql`
+**"Database connection failed"** - Check PostgreSQL is running: `docker ps | grep postgres`
 
 **No posts/members found** - Generate Ghost data first: `pnpm reset:data`

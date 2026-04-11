@@ -119,7 +119,9 @@ describe('Posts Content API', function () {
     });
 
     it('Errors upon invalid filter value', async function () {
-        if (process.env.NODE_ENV !== 'testing-mysql') {
+        const db = require('../../../core/server/data/db');
+
+        if (db.knex.client.config.client === 'sqlite3') {
             this.skip();
         }
 

@@ -195,7 +195,7 @@ The fixture resolves isolation mode per test file:
 
 Test isolation is still automatic, but no longer always per-test.
 
-Infrastructure (MySQL, Redis, Mailpit, Tinybird) must already be running before tests start. Use `pnpm dev` or `pnpm --filter @tryghost/e2e infra:up`.
+Infrastructure (PostgreSQL, Mailpit, Tinybird) must already be running before tests start. Use `pnpm dev` or `pnpm --filter @tryghost/e2e infra:up`.
 
 Global setup (`tests/global.setup.ts`) does:
 - Cleans up e2e containers and test databases
@@ -269,7 +269,7 @@ Within the e2e directory:
 # Run all tests
 pnpm test
 
-# Start/stop test infra (MySQL/Redis/Mailpit/Tinybird)
+# Start/stop test infra (PostgreSQL/Mailpit/Tinybird)
 pnpm infra:up
 pnpm infra:down
 

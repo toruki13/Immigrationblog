@@ -307,7 +307,7 @@ describe('Domain Warming Integration Tests', function () {
         });
 
         it('handles maximum limit scenarios', async function () {
-            if (process.env.NODE_ENV !== 'testing-mysql') {
+            if (db.knex.client.config.client === 'sqlite3') {
                 // This test fails on SQLite because of its small parameter limit
                 return this.skip();
             }

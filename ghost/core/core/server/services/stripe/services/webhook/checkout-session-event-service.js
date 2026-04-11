@@ -6,6 +6,8 @@ const {
 } = require('../../../lib/member-signup-contexts');
 /** @typedef {import('../../../lib/member-signup-contexts').SignupContext} SignupContext */
 
+const DUPLICATE_ENTRY_ERROR_CODES = ['SQLITE_CONSTRAINT', '23505'];
+
 /**
  * Handles `checkout.session.completed` webhook events
  *
@@ -154,7 +156,7 @@ module.exports = class CheckoutSessionEventService {
                     subscription: updatedSubscription
                 });
             } catch (err) {
-                if (err.code !== 'ER_DUP_ENTRY' && err.code !== 'SQLITE_CONSTRAINT') {
+                if (!DUPLICATE_ENTRY_ERROR_CODES.includes(err.code)) {
                     throw err;
                 }
                 throw new errors.ConflictError({
@@ -180,7 +182,7 @@ module.exports = class CheckoutSessionEventService {
                         subscription: updatedSubscription
                     });
                 } catch (err) {
-                    if (err.code !== 'ER_DUP_ENTRY' && err.code !== 'SQLITE_CONSTRAINT') {
+                    if (!DUPLICATE_ENTRY_ERROR_CODES.includes(err.code)) {
                         throw err;
                     }
                     throw new errors.ConflictError({
@@ -272,7 +274,7 @@ module.exports = class CheckoutSessionEventService {
                         attribution
                     });
                 } catch (err) {
-                    if (err.code !== 'ER_DUP_ENTRY' && err.code !== 'SQLITE_CONSTRAINT') {
+                    if (!DUPLICATE_ENTRY_ERROR_CODES.includes(err.code)) {
                         throw err;
                     }
                     throw new errors.ConflictError({

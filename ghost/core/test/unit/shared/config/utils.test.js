@@ -22,7 +22,7 @@ describe('Config Utils', function () {
 
         it('ensure we change paths only', function () {
             fakeConfig.database = {
-                client: 'mysql',
+                client: 'pg',
                 connection: {
                     filename: 'content/data/ghost.db'
                 }
@@ -46,7 +46,7 @@ describe('Config Utils', function () {
 
         it('ensure we don\'t change absolute paths', function () {
             fakeConfig.database = {
-                client: 'mysql',
+                client: 'pg',
                 connection: {
                     filename: '/content/data/ghost.db'
                 }
@@ -66,6 +66,56 @@ describe('Config Utils', function () {
             assert.equal(changedKey.length, 1);
             assert.equal(changedKey[0][0], 'database:filename');
             assert.notEqual(changedKey[0][1], 'content\\data\\ghost.db');
+        });
+    });
+
+    describe('sanitizeDatabaseProperties', function () {
+        beforeEach(function () {
+            fakeNconf.get = (key) => {
+                return _.get(fakeConfig, key.replace(/:/g, '.'));
+            };
+            fakeNconf.set = function (key, value) {
+                _.set(fakeConfig, key.replace(/:/g, '.'), value);
+            };
+        });
+
+        it('throws if mysql is configured', function () {
+            fakeConfig = {
+                database: {
+                    client: 'mysql',
+                    connection: {}
+                }
+            };
+
+            assert.throws(() => {
+                configUtils.sanitizeDatabaseProperties(fakeNconf);
+            }, /MySQL is no longer supported/);
+        });
+
+        it('preserves postgres connection fields and removes sqlite filename', function () {
+            fakeConfig = {
+                database: {
+                    client: 'pg',
+                    connection: {
+                        host: '127.0.0.1',
+                        port: 5433,
+                        user: 'ghost',
+                        password: 'ghost',
+                        database: 'ghost_dev',
+                        filename: '/tmp/ghost.db'
+                    }
+                }
+            };
+
+            configUtils.sanitizeDatabaseProperties(fakeNconf);
+
+            assert.deepEqual(fakeConfig.database.connection, {
+                host: '127.0.0.1',
+                port: 5433,
+                user: 'ghost',
+                password: 'ghost',
+                database: 'ghost_dev'
+            });
         });
     });
 });

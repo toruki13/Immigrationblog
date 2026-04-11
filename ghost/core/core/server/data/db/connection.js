@@ -1,7 +1,6 @@
 const _ = require('lodash');
 const knex = require('knex');
 const os = require('os');
-const fs = require('fs');
 
 const logging = require('@tryghost/logging');
 const config = require('../../../shared/config');
@@ -10,12 +9,33 @@ const errors = require('@tryghost/errors');
 /** @type {knex.Knex} */
 let knexInstance;
 
+function shouldEnableDefaultPgSsl(connectionString) {
+    try {
+        const parsed = new URL(connectionString);
+        const sslMode = parsed.searchParams.get('sslmode');
+
+        if (sslMode === 'disable') {
+            return false;
+        }
+
+        return !['localhost', '127.0.0.1', '::1', 'postgres'].includes(parsed.hostname);
+    } catch (err) {
+        return true;
+    }
+}
+
 // @TODO:
 // - if you require this file before config file was loaded,
 // - then this file is cached and you have no chance to connect to the db anymore
 // - bring dynamic into this file (db.connect())
 function configure(dbConfig) {
     const client = dbConfig.client;
+
+    if (client === 'mysql' || client === 'mysql2') {
+        throw new errors.InternalServerError({
+            message: 'MySQL is no longer supported in this fork. Configure database.client as "pg".'
+        });
+    }
 
     if (client === 'sqlite3') {
         // Backwards compatibility with old knex behaviour
@@ -45,18 +65,40 @@ function configure(dbConfig) {
         }
     }
 
-    if (client === 'mysql2') {
-        dbConfig.connection.timezone = 'Z';
-        dbConfig.connection.charset = 'utf8mb4';
-        dbConfig.connection.decimalNumbers = true;
+    if (client === 'pg') {
+        const existingConnection = typeof dbConfig.connection === 'object' ? dbConfig.connection : {};
 
-        if (process.env.REQUIRE_INFILE_STREAM) {
-            if (process.env.NODE_ENV === 'development' || process.env.ALLOW_INFILE_STREAM) {
-                dbConfig.connection.infileStreamFactory = path => fs.createReadStream(path);
-            } else {
-                throw new errors.InternalServerError({message: 'MySQL infile streaming is required to run the current process, but is not allowed. Run the script in development mode or set ALLOW_INFILE_STREAM=1.'});
+        // Railway provides DATABASE_URL as a connection string
+        if (process.env.DATABASE_URL) {
+            dbConfig.connection = {
+                ...existingConnection,
+                connectionString: process.env.DATABASE_URL
+            };
+
+            if (dbConfig.connection.ssl === undefined && shouldEnableDefaultPgSsl(process.env.DATABASE_URL)) {
+                dbConfig.connection.ssl = {rejectUnauthorized: false};
             }
         }
+
+        // Normalize SSL config when it is explicitly enabled or provided.
+        if (typeof dbConfig.connection === 'object') {
+            if (dbConfig.connection.ssl === true) {
+                dbConfig.connection.ssl = {rejectUnauthorized: false};
+            } else if (dbConfig.connection.ssl && typeof dbConfig.connection.ssl === 'object') {
+                dbConfig.connection.ssl = {
+                    rejectUnauthorized: false,
+                    ...dbConfig.connection.ssl
+                };
+            }
+        }
+
+        dbConfig.searchPath = ['public'];
+    }
+
+    if (client !== 'sqlite3' && client !== 'pg') {
+        throw new errors.InternalServerError({
+            message: `Unsupported database client "${client}". Supported clients are "pg" and "sqlite3".`
+        });
     }
 
     return dbConfig;

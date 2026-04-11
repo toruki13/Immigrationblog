@@ -27,6 +27,14 @@ module.exports.isMySQL = () => {
 };
 
 /**
+ * Checks if the current active connection is a PostgreSQL database
+ * @returns {Boolean} isPostgreSQL
+ */
+module.exports.isPostgreSQL = () => {
+    return db.knex.client.config.client === 'pg';
+};
+
+/**
  * Checks if the current active connection is a SQLite database
  * @returns {Boolean} isSQLite
  */
@@ -106,6 +114,9 @@ module.exports.truncate = async (tableName) => {
             await db.knex.raw('PRAGMA foreign_keys = ON;');
         }
         return;
+    } else if (module.exports.isPostgreSQL()) {
+        await db.knex.raw('TRUNCATE TABLE ?? RESTART IDENTITY CASCADE', [tableName]);
+        return;
     }
 
     await db.knex.raw('SET FOREIGN_KEY_CHECKS=0;');
@@ -158,6 +169,23 @@ const truncateAll = async () => {
         } finally {
             debug('Database teardown end');
         }
+    }
+
+    if (module.exports.isPostgreSQL()) {
+        try {
+            await sequence(tables.map(table => () => db.knex.raw('TRUNCATE TABLE ?? RESTART IDENTITY CASCADE', [table])));
+        } catch (err) {
+            // CASE: table does not exist || DB does not exist
+            if (err.code === '42P01' || err.code === '3D000') {
+                return Promise.resolve();
+            }
+
+            throw err;
+        } finally {
+            debug('Database teardown end');
+        }
+
+        return;
     }
 
     await db.knex.transaction(async (trx) => {

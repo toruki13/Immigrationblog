@@ -601,7 +601,7 @@ describe('Email Event Storage', function () {
         });
 
         const EmailSpamComplaintEvent = {
-            add: sinon.stub().rejects({code: 'ER_DUP_ENTRY'})
+            add: sinon.stub().rejects({code: '23505'})
         };
 
         const emailSuppressionList = {

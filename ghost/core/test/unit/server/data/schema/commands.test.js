@@ -7,7 +7,7 @@ describe('schema commands', function () {
     it('_hasForeignSQLite throws when knex is nox configured to use sqlite3', async function () {
         const Knex = require('knex');
         const knex = Knex({
-            client: 'mysql'
+            client: 'pg'
         });
 
         try {
@@ -22,7 +22,7 @@ describe('schema commands', function () {
     it('_hasPrimaryKeySQLite throws when knex is configured to use sqlite', async function () {
         const Knex = require('knex');
         const knex = Knex({
-            client: 'mysql'
+            client: 'pg'
         });
 
         try {

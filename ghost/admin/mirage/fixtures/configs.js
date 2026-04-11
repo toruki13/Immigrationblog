@@ -1,6 +1,6 @@
 export default [{
     clientExtensions: {},
-    database: 'mysql',
+    database: 'pg',
     enableDeveloperExperiments: false,
     environment: 'development',
     labs: {},

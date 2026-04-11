@@ -194,7 +194,7 @@ describe('Update Check', function () {
                     siteUrl: 'https://localhost:2368/test',
                     isPrivacyDisabled: false,
                     env: process.env.NODE_ENV,
-                    databaseType: 'mysql',
+                    databaseType: 'pg',
                     ghostVersion: '4.0.0'
                 },
                 request: request,
@@ -210,7 +210,7 @@ describe('Update Check', function () {
             assert.equal(capturedData.ghost_version, '4.0.0');
             assert.equal(capturedData.node_version, process.versions.node);
             assert.equal(capturedData.env, process.env.NODE_ENV);
-            assert.match(capturedData.database_type, /sqlite3|mysql/);
+            assert.match(capturedData.database_type, /sqlite3|pg/);
             assert.equal(typeof capturedData.blog_id, 'string');
             assert(capturedData.blog_id);
             assert.equal(capturedData.theme, 'casperito');

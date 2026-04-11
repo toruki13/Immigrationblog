@@ -1,6 +1,6 @@
 import baseDebug from '@tryghost/debug';
 import logging from '@tryghost/logging';
-import {GhostInstance, MySQLManager} from './service-managers';
+import {GhostInstance, PostgresManager} from './service-managers';
 import {GhostManager} from './service-managers/ghost-manager';
 import {randomUUID} from 'crypto';
 import type {GhostConfig} from '@/helpers/playwright/fixture';
@@ -23,14 +23,14 @@ type GhostEnvOverrides = GhostConfig | Record<string, string>;
  * - dev: Uses dev infrastructure with hot-reloading
  * - build: Uses pre-built image (set GHOST_E2E_IMAGE for registry images)
  * 
- * All modes use the same infrastructure (MySQL, Redis, Mailpit, Tinybird)
+ * All modes use the same infrastructure (PostgreSQL, Mailpit, Tinybird)
  * started via docker compose. Ghost and gateway containers are created
  * dynamically per-worker for test isolation.
  */
 export class EnvironmentManager {
     private readonly mode: EnvironmentMode;
     private readonly workerIndex: number;
-    private readonly mysql: MySQLManager;
+    private readonly postgres: PostgresManager;
     private readonly ghost: GhostManager;
     private initialized = false;
 
@@ -38,7 +38,7 @@ export class EnvironmentManager {
         this.mode = this.detectMode();
         this.workerIndex = parseInt(process.env.TEST_PARALLEL_INDEX || '0', 10);
         
-        this.mysql = new MySQLManager();
+        this.postgres = new PostgresManager();
         this.ghost = new GhostManager({
             workerIndex: this.workerIndex,
             mode: this.mode
@@ -71,7 +71,7 @@ export class EnvironmentManager {
         await this.cleanupResources();
 
         // Create base database
-        await this.mysql.recreateBaseDatabase('ghost_e2e_base');
+        await this.postgres.recreateBaseDatabase('ghost_e2e_base');
 
         // Create containers and wait for Ghost to be healthy (runs migrations)
         await this.ghost.setup('ghost_e2e_base');
@@ -79,7 +79,7 @@ export class EnvironmentManager {
         this.initialized = true;
 
         // Snapshot the migrated database for test isolation
-        await this.mysql.createSnapshot('ghost_e2e_base');
+        await this.postgres.createSnapshot('ghost_e2e_base');
 
         logging.info(`${this.mode} environment global setup complete`);
     }
@@ -119,7 +119,7 @@ export class EnvironmentManager {
         const instanceId = `ghost_e2e_${siteUuid.replace(/-/g, '_')}`;
 
         // Setup database
-        await this.mysql.setupTestDatabase(instanceId, siteUuid, {
+        await this.postgres.setupTestDatabase(instanceId, siteUuid, {
             stripe: options.stripe
         });
 
@@ -143,14 +143,14 @@ export class EnvironmentManager {
      * Per-test teardown - drops test database.
      */
     async perTestTeardown(instance: GhostInstance): Promise<void> {
-        await this.mysql.cleanupTestDatabase(instance.database);
+        await this.postgres.cleanupTestDatabase(instance.database);
     }
 
     private async cleanupResources(): Promise<void> {
         logging.info('Cleaning up e2e resources...');
         await this.ghost.cleanupAllContainers();
-        await this.mysql.dropAllTestDatabases();
-        await this.mysql.deleteSnapshot();
+        await this.postgres.dropAllTestDatabases();
+        await this.postgres.deleteSnapshot();
         logging.info('E2E resources cleaned up');
     }
 

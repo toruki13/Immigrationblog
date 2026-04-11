@@ -45,32 +45,69 @@ const checkUrlProtocol = function checkUrlProtocol(url) {
     }
 };
 
+const shouldEnableDefaultPgSsl = function shouldEnableDefaultPgSsl(connectionString) {
+    try {
+        const parsed = new URL(connectionString);
+        const sslMode = parsed.searchParams.get('sslmode');
+
+        if (sslMode === 'disable') {
+            return false;
+        }
+
+        return !['localhost', '127.0.0.1', '::1', 'postgres'].includes(parsed.hostname);
+    } catch (err) {
+        return true;
+    }
+};
+
 /**
  * nconf merges all database keys together and this can be confusing
- * e.g. production default database is sqlite, but you override the configuration with mysql
+ * e.g. production default database is sqlite, but you override the configuration with postgres
  *
  * this.clear('key') does not work
  * https://github.com/indexzero/nconf/issues/235#issuecomment-257606507
  */
 const sanitizeDatabaseProperties = function sanitizeDatabaseProperties(nconf) {
-    if (nconf.get('database:client') === 'mysql') {
-        nconf.set('database:client', 'mysql2');
+    const client = nconf.get('database:client');
+
+    if (client === 'mysql' || client === 'mysql2') {
+        // new Error is allowed here, as we do not want config to depend on @tryghost/error
+        // eslint-disable-next-line ghost/ghost-custom/no-native-error
+        throw new Error('MySQL is no longer supported in this fork. Configure database.client as "pg".');
     }
 
-    const database = nconf.get('database');
+    const database = nconf.get('database') || {};
+    database.connection = database.connection || {};
 
-    if (nconf.get('database:client') === 'mysql2') {
+    if (client === 'pg') {
         delete database.connection.filename;
+
+        if (process.env.DATABASE_URL) {
+            database.connection.connectionString = process.env.DATABASE_URL;
+
+            if (database.connection.ssl === undefined && shouldEnableDefaultPgSsl(process.env.DATABASE_URL)) {
+                database.connection.ssl = {rejectUnauthorized: false};
+            }
+        }
     } else {
         delete database.connection.host;
+        delete database.connection.port;
         delete database.connection.user;
         delete database.connection.password;
         delete database.connection.database;
+        delete database.connection.connectionString;
+        delete database.connection.ssl;
     }
 
     nconf.set('database', database);
 
-    if (nconf.get('database:client') === 'sqlite3') {
+    if (client !== 'pg' && client !== 'sqlite3') {
+        // new Error is allowed here, as we do not want config to depend on @tryghost/error
+        // eslint-disable-next-line ghost/ghost-custom/no-native-error
+        throw new Error(`Unsupported database client "${client}". Supported clients are "pg" and "sqlite3".`);
+    }
+
+    if (client === 'sqlite3') {
         makePathsAbsolute(nconf, nconf.get('database:connection'), 'database:connection');
     }
 };

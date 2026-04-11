@@ -95,7 +95,7 @@ const AboutModal = NiceModal.create<RoutingModalProps>(({}) => {
                     {
                         showSystemInfo() && showDatabaseWarning(config.environment, config.database) && (
                             <div className='text-red-500 dark:text-red-400'>
-                                 You are running an unsupported database in production. Please <a href="https://ghost.org/docs/faq/supported-databases/" rel="noopener noreferrer" target="_blank">upgrade to MySQL 8</a>.
+                                 This fork only supports PostgreSQL. Please <a href="https://www.postgresql.org/docs/" rel="noopener noreferrer" target="_blank">switch to PostgreSQL</a>.
                             </div>
                         )
                     }

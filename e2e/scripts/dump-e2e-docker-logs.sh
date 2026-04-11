@@ -29,4 +29,4 @@ dump_container_logs() {
 
 dump_container_logs '^ghost-e2e-worker-' 'Ghost worker'
 dump_container_logs '^ghost-e2e-gateway-' 'E2E gateway'
-dump_container_logs '^ghost-dev-(mysql|redis|mailpit|analytics|analytics-db|tinybird-local|tb-cli)$' 'E2E infra'
+dump_container_logs '^ghost-dev-(postgres|mailpit|analytics|analytics-db|tinybird-local|tb-cli)$' 'E2E infra'

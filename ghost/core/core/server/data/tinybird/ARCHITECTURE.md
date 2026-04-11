@@ -1,20 +1,20 @@
 # Ghost Traffic Analytics Data Model Explainer
 
-This document explains the comprehensive data architecture behind Ghost's traffic analytics features, 
-covering both the MySQL database schema and Tinybird event streams, their relationships, and how they work together 
+This document explains the comprehensive data architecture behind Ghost's traffic analytics features,
+covering both the PostgreSQL database schema and Tinybird event streams, their relationships, and how they work together
 to provide real-time analytics.
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [MySQL Schema (Ghost Database)](#mysql-schema-ghost-database)
+2. [PostgreSQL Schema (Ghost Database)](#postgresql-schema-ghost-database)
 3. [Tinybird Event Schema](#tinybird-event-schema)
 4. [Data Flow & Relationships](#data-flow--relationships)
 5. [API Endpoints](#api-endpoints)
 6. [Mock Data Considerations](#mock-data-considerations)
 
 ## Overview
- Ghost's traffic analytics system has two data sources: MySQL and Tinybird
+ Ghost's traffic analytics system has two data sources: PostgreSQL and Tinybird
 
 # Ghost Analytics Architecture
 
@@ -22,21 +22,21 @@ to provide real-time analytics.
 graph TD
     A[Ghost Admin<br/>Frontend] --> B[Ghost<br/>Main Server]
     A --> C[Tinybird<br/>Analytics DB]
-    B --> D[MySQL<br/>Database]
+    B --> D[PostgreSQL<br/>Database]
     B --> C
 ```
 
-- **MySQL Database**: Stores content, members, newsletters, and member attribution events
+- **PostgreSQL Database**: Stores content, members, newsletters, and member attribution events
 - **Tinybird**: Real-time analytics database that processes page views and visitor sessions
 - **Cross-system Integration**: UUID-based relationships between Ghost entities and Tinybird events
 
 The system tracks:
 - **Web Traffic**: Page views, sessions, referrers, device info (via Tinybird)
-- **Member Growth**: Signups, conversions, attribution to content (via MySQL)
-- **Newsletter Performance**: Sends, opens, clicks, revenue attribution (via MySQL + Tinybird)
+- **Member Growth**: Signups, conversions, attribution to content (via PostgreSQL)
+- **Newsletter Performance**: Sends, opens, clicks, revenue attribution (via PostgreSQL + Tinybird)
 - **Content Performance**: Views, member conversions, revenue impact (hybrid)
 
-## MySQL Schema (Ghost Database)
+## PostgreSQL Schema (Ghost Database)
 
 ### Core Content Tables
 
@@ -213,10 +213,10 @@ Fields with specific data in the schema:
 ```json
 {
   "site_uuid": "string",
-  "member_uuid": "string|undefined",  // member.uuid in MySQL
-  "member_status": "free|paid|comped|undefined", // member.status in MySQL
-  "post_uuid": "string|undefined", // post.uuid in MySQL
-  "post_type": "post|page|empty", //post.type in MySQL
+  "member_uuid": "string|undefined",  // member.uuid in PostgreSQL
+  "member_status": "free|paid|comped|undefined", // member.status in PostgreSQL
+  "post_uuid": "string|undefined", // post.uuid in PostgreSQL
+  "post_type": "post|page|empty", // post.type in PostgreSQL
   "user-agent": "string",
   "locale": "string",
   "location": "string", // Country code
@@ -267,8 +267,8 @@ Frontend → Tinybird analytics_events → _mv_hits materialized view
 
 **Key Relationships:**
 - `payload.site_uuid` identifies the Ghost site
-- `payload.post_uuid` correlates to `posts.uuid` in MySQL
-- `payload.member_uuid` correlates to `members.uuid` in MySQL
+- `payload.post_uuid` correlates to `posts.uuid` in PostgreSQL
+- `payload.member_uuid` correlates to `members.uuid` in PostgreSQL
 
 ### 2. Member Attribution Flow
 
@@ -294,14 +294,14 @@ Click Tracking → redirects → members_click_events
 
 **Post Performance Analysis:**
 1. Get page views from Tinybird using `posts.uuid`
-2. Get member attribution from MySQL using `posts.id`
-3. Get email performance from MySQL using `posts.id`
+2. Get member attribution from PostgreSQL using `posts.id`
+3. Get email performance from PostgreSQL using `posts.id`
 4. Combine for comprehensive post analytics
 
 **Member Journey Tracking:**
 1. Tinybird tracks anonymous page views
-2. MySQL tracks member signup with attribution
-3. MySQL tracks paid conversion with attribution
+2. PostgreSQL tracks member signup with attribution
+3. PostgreSQL tracks paid conversion with attribution
 
 ### Core Stats Endpoints
 
@@ -333,7 +333,7 @@ GET /stats/top-sources-growth  // Source performance over time
 
 // Batch endpoints
 POST /stats/posts-visitor-counts   // Bulk visitor counts (Tinybird)
-POST /stats/posts-member-counts    // Bulk member attribution (MySQL)
+POST /stats/posts-member-counts    // Bulk member attribution (PostgreSQL)
 ```
 
 ### Request/Response Patterns
@@ -413,4 +413,4 @@ For realistic testing, mock data should maintain proper ratios:
 - Post-specific queries join on post IDs/UUIDs
 - Member attribution queries are complex with multiple CTEs
 
-This data model enables comprehensive traffic analytics while maintaining performance through strategic use of both MySQL and Tinybird for their respective strengths.
+This data model enables comprehensive traffic analytics while maintaining performance through strategic use of both PostgreSQL and Tinybird for their respective strengths.

@@ -99,7 +99,7 @@ describe('UNIT: sentry', function () {
             assert.deepEqual(result, event);
         });
 
-        it('sets sql context for mysql2 errors', function () {
+        it('sets sql context for database driver errors', function () {
             sinon.stub(errors.utils, 'isGhostError').returns(true);
             const beforeSend = sentry.beforeSend;
             const event = {
@@ -142,7 +142,7 @@ describe('UNIT: sentry', function () {
                     }]
                 },
                 contexts: {
-                    mysql: {
+                    sql: {
                         errno: 123,
                         code: 456,
                         sql: 'SELECT * FROM test',
