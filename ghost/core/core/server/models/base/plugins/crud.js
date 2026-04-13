@@ -199,8 +199,9 @@ module.exports = function (Bookshelf) {
 
             return model.fetch(options)
                 .catch((err) => {
-                    // CASE: SQL syntax is incorrect
-                    if (err.errno === 1054 || err.errno === 1) {
+                    // CASE: SQL syntax is incorrect (unknown column)
+                    // errno 1054 = MySQL, errno 1 = SQLite, code 42703 = PostgreSQL
+                    if (err.errno === 1054 || err.errno === 1 || err.code === '42703') {
                         throw new errors.BadRequestError({
                             message: tpl(messages.couldNotUnderstandRequest),
                             err

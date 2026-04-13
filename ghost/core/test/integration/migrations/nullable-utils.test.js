@@ -41,9 +41,8 @@ describe('Migrations - schema utils', function () {
         });
 
         // Note: We're not adding actual foreign key constraints in these tests
-        // because MySQL has limitations with modifying columns that have foreign keys,
-        // even with foreign_key_checks disabled. The tests verify that the 
-        // disableForeignKeyChecks option is properly passed through to the migration.
+        // because database limitations with modifying columns that have foreign keys.
+        // The tests verify basic nullable column operations work correctly.
 
         // Insert test data
         await knex('test_foreign_table').insert({id: 1, name: 'test'});
@@ -59,27 +58,8 @@ describe('Migrations - schema utils', function () {
     afterEach(async function () {
         const knex = db.knex;
 
-        // Drop tables in correct order due to foreign key constraints
+        // Drop tables in correct order
         if (await knex.schema.hasTable(tableName)) {
-            if (dbUtils.isMySQL()) {
-                try {
-                    // Get all foreign keys for the table
-                    const fks = await knex.raw(`
-                        SELECT CONSTRAINT_NAME 
-                        FROM information_schema.TABLE_CONSTRAINTS 
-                        WHERE TABLE_SCHEMA = DATABASE() 
-                        AND TABLE_NAME = ? 
-                        AND CONSTRAINT_TYPE = 'FOREIGN KEY'
-                    `, [tableName]);
-                    
-                    // Drop each foreign key
-                    for (const fk of fks[0]) {
-                        await knex.raw(`ALTER TABLE ?? DROP FOREIGN KEY ??`, [tableName, fk.CONSTRAINT_NAME]);
-                    }
-                } catch (err) {
-                    // Foreign keys might not exist, continue
-                }
-            }
             await knex.schema.dropTable(tableName);
         }
 
@@ -92,29 +72,37 @@ describe('Migrations - schema utils', function () {
 
     async function isColumnNullable(table, column) {
         const knex = db.knex;
-        
+
         if (dbUtils.isSQLite()) {
             const response = await knex.raw('PRAGMA table_info(??)', [table]);
             const columnInfo = response.find(col => col.name === column);
             return columnInfo && columnInfo.notnull === 0;
         } else {
-            const response = await knex.raw('SHOW COLUMNS FROM ??', [table]);
-            const columnInfo = response[0].find(col => col.Field === column);
-            return columnInfo && columnInfo.Null === 'YES';
+            // PostgreSQL
+            const response = await knex.raw(
+                `SELECT is_nullable FROM information_schema.columns WHERE table_name = ? AND column_name = ?`,
+                [table, column]
+            );
+            const columnInfo = response.rows[0];
+            return columnInfo && columnInfo.is_nullable === 'YES';
         }
     }
 
     async function isColumnNotNullable(table, column) {
         const knex = db.knex;
-        
+
         if (dbUtils.isSQLite()) {
             const response = await knex.raw('PRAGMA table_info(??)', [table]);
             const columnInfo = response.find(col => col.name === column);
             return columnInfo && columnInfo.notnull === 1;
         } else {
-            const response = await knex.raw('SHOW COLUMNS FROM ??', [table]);
-            const columnInfo = response[0].find(col => col.Field === column);
-            return columnInfo && columnInfo.Null === 'NO';
+            // PostgreSQL
+            const response = await knex.raw(
+                `SELECT is_nullable FROM information_schema.columns WHERE table_name = ? AND column_name = ?`,
+                [table, column]
+            );
+            const columnInfo = response.rows[0];
+            return columnInfo && columnInfo.is_nullable === 'NO';
         }
     }
 
@@ -165,32 +153,31 @@ describe('Migrations - schema utils', function () {
             assert.equal(isNullableAfter, true, 'Column should still be nullable');
         });
 
-        it('Handles disableForeignKeyChecks option in down migration', async function () {
-            // This test verifies that the disableForeignKeyChecks option works correctly
-            const migration = utils.createSetNullableMigration(tableName, 'mixed_col', {
-                disableForeignKeyChecks: true
-            });
+        it('Handles dropNullable migration correctly', async function () {
+            // This test verifies that dropNullable works correctly
+            const migration = utils.createDropNullableMigration(tableName, 'nullable_col');
 
-            // Run up migration first
-            const transactingUp = await db.knex.transaction();
-            await migration.up({transacting: transactingUp});
-            await transactingUp.commit();
+            // Verify initial state
+            const isNullableInitial = await isColumnNullable(tableName, 'nullable_col');
+            assert.equal(isNullableInitial, true, 'Column should initially be nullable');
 
-            // Verify column is nullable
-            const isNullableAfter = await isColumnNullable(tableName, 'mixed_col');
-            assert.equal(isNullableAfter, true, 'Column should be nullable after up migration');
+            // Run up migration
+            const transacting = await db.knex.transaction();
+            await migration.up({transacting});
+            await transacting.commit();
 
-            // Run down migration with foreign key checks disabled
+            // Verify column is now not nullable
+            const isNotNullableAfter = await isColumnNotNullable(tableName, 'nullable_col');
+            assert.equal(isNotNullableAfter, true, 'Column should be not nullable after up migration');
+
+            // Run down migration
             const transactingDown = await db.knex.transaction();
             await migration.down({transacting: transactingDown});
             await transactingDown.commit();
 
-            // Verify column is not nullable again
-            const isNotNullableAfterDown = await isColumnNotNullable(tableName, 'mixed_col');
-            assert.equal(isNotNullableAfterDown, true, 'Column should be not nullable after down migration');
-            
-            // The test passes if no errors were thrown
-            // The disableForeignKeyChecks option is being used internally
+            // Verify column is nullable again
+            const isNullableAfterDown = await isColumnNullable(tableName, 'nullable_col');
+            assert.equal(isNullableAfterDown, true, 'Column should be nullable after down migration');
         });
     });
 
@@ -241,18 +228,16 @@ describe('Migrations - schema utils', function () {
             assert.equal(isNotNullableAfter, true, 'Column should still be not nullable');
         });
 
-        it('Handles disableForeignKeyChecks option when dropping nullable', async function () {
-            // This test verifies that the disableForeignKeyChecks option works correctly
+        it('Drops nullable when column has data', async function () {
+            // This test verifies that dropNullable works correctly with data in the column
             const testColumn = 'nullable_col';
-            const migration = utils.createDropNullableMigration(tableName, testColumn, {
-                disableForeignKeyChecks: true
-            });
+            const migration = utils.createDropNullableMigration(tableName, testColumn);
 
             // Verify column is initially nullable
             const isNullableInitial = await isColumnNullable(tableName, testColumn);
             assert.equal(isNullableInitial, true, 'Column should be nullable before test');
 
-            // Run up migration with foreign key checks disabled
+            // Run up migration
             const transacting = await db.knex.transaction();
             await migration.up({transacting});
             await transacting.commit();
@@ -260,9 +245,6 @@ describe('Migrations - schema utils', function () {
             // Verify column is not nullable
             const isNotNullableAfter = await isColumnNotNullable(tableName, testColumn);
             assert.equal(isNotNullableAfter, true, 'Column should be not nullable after up migration');
-            
-            // The test passes if no errors were thrown
-            // The disableForeignKeyChecks option is being used internally
         });
     });
 
@@ -285,12 +267,15 @@ describe('Migrations - schema utils', function () {
             // Verify column is not nullable and still has its default
             const isNotNullable = await isColumnNotNullable(tableName, 'with_default');
             assert.equal(isNotNullable, true, 'Column should be not nullable');
-            
-            // Verify default value is preserved (MySQL-specific check)
-            if (dbUtils.isMySQL()) {
-                const response = await db.knex.raw('SHOW COLUMNS FROM ??', [tableName]);
-                const columnInfo = response[0].find(col => col.Field === 'with_default');
-                assert.equal(columnInfo.Default, 'default', 'Column should still have its default value');
+
+            // Verify default value is preserved (PostgreSQL-specific check)
+            if (dbUtils.isPostgreSQL()) {
+                const response = await db.knex.raw(
+                    `SELECT column_default FROM information_schema.columns WHERE table_name = ? AND column_name = ?`,
+                    [tableName, 'with_default']
+                );
+                const columnInfo = response.rows[0];
+                assert.ok(columnInfo.column_default, 'Column should still have its default value');
             }
         });
 
@@ -313,26 +298,25 @@ describe('Migrations - schema utils', function () {
                     await transacting.rollback();
                 }
             }
-            
+
             // The behavior differs between databases:
-            // - MySQL: SHOW COLUMNS will throw an error for non-existent table, logging a warning
+            // - PostgreSQL: information_schema query will fail for non-existent table, logging a warning
             // - SQLite: PRAGMA table_info returns empty result, no error until ALTER TABLE
-            
-            if (dbUtils.isMySQL()) {
-                // MySQL should log a warning when checking nullable status fails
+
+            if (dbUtils.isPostgreSQL()) {
+                // PostgreSQL should log a warning when checking nullable status fails
                 sinon.assert.calledWith(logWarnSpy, sinon.match('Could not check nullable status'));
             }
-            
+
             // Both databases should eventually fail when trying to ALTER the non-existent table
             assert(errorThrown, 'Should throw an error when trying to alter non-existent table');
-            
+
             // The error message varies between databases and Knex versions
-            // SQLite might give a Knex internal error or a 'no such table' error
-            // MySQL should give a 'table does not exist' error
-            const isExpectedError = errorMessage.match(/no such table|does not exist|doesn't exist|Table .* not found/i) ||
+            const isExpectedError = errorMessage.match(/no such table|does not exist|doesn't exist|Table .* not found|relation .* does not exist/i) ||
                                   errorMessage.includes('Cannot read properties of undefined') ||
-                                  errorMessage.includes('SQLITE_ERROR');
-            
+                                  errorMessage.includes('SQLITE_ERROR') ||
+                                  errorMessage.includes('42P01');
+
             assert(isExpectedError, `Error should be related to missing table, but was: ${errorMessage}`);
         });
     });

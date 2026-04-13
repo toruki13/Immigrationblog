@@ -380,7 +380,7 @@ describe('Post Model', function () {
                     assertExists(edited);
                     assert.equal(edited.attributes.status, 'scheduled');
 
-                    // mysql does not store ms
+                    // PostgreSQL does not store ms in timestamps used in these comparisons
                     assert.equal(moment(edited.attributes.published_at).startOf('seconds').diff(moment(newPublishedAt).startOf('seconds')), 0);
 
                     assert.equal(Object.keys(eventsTriggered).length, 2);

@@ -228,7 +228,7 @@ describe('Members Signin', function () {
         const email = 'validity-period-member1@test.com';
 
         beforeEach(async function () {
-            // Remove ms precision (not supported by MySQL)
+            // Remove ms precision for timestamp comparisons
             startDate.setMilliseconds(0);
 
             clock = sinon.useFakeTimers(startDate);

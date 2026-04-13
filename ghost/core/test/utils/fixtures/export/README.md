@@ -2,15 +2,9 @@ Steps to generate a new `vX_export.json` file:
 1. `ghost install --version 3.0.0` - install a local version of Ghost using the X version
 2. When prompted for blog details use following data for consistency:
   - blog URL: accept default (http://localhost:2368)
-  - MySQL hostname: whatever is configured locally (localhost in my case)
-  - MySQL username: whatever user is configured locally
-  - MySQL password: whatever is configured locally for the user
+  - Database: PostgreSQL (use the configured local connection)
   - Ghost database name: accept default (fresh_3_0_prod as an example)
-  - "ghost" MySQL user: n (unless you need one for your local setup)
-  - set up Systemd: n (no reason to set this up locally)
-  - start Ghost: n (need to fix permissions first)
-  - run `sudo chown -R $USER:$USER content` (this is needed for local setup as the CLI creates content folder with ghost:ghost permissions)
-  - start Ghost instance: `ghost start`
+  - Start Ghost when prompted
 3. Register with test user account with following details:
   - `Testing Export Fixtures` - Site title
   - `Fixture Ghosty` - Full name

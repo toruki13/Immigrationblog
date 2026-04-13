@@ -1,0 +1,166 @@
+name: ghost-dev
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: ghost-dev-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: ghost
+      POSTGRES_PASSWORD: ghost
+      POSTGRES_DB: ghost_dev
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ghost -d ghost_dev"]
+      interval: 1s
+      retries: 120
+      timeout: 5s
+      start_period: 10s
+
+  mailpit:
+    image: axllent/mailpit@sha256:0b5c5f7ffd3c93474baa7fd3869c1462e5a3d03256ed0933dfc0e7d81d794036
+    container_name: ghost-dev-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8025"]
+      interval: 1s
+      retries: 30
+
+  # Ghost backend
+  ghost-dev:
+    build:
+      context: ./
+      dockerfile: docker/ghost-dev/Dockerfile
+    container_name: ghost-dev
+    entrypoint: []
+    env_file:
+      - .env
+    working_dir: /home/ghost/ghost/core
+    command: ["sh", "-c", "pnpm knex-migrator init 2>/dev/null || true && node index.js"]
+    volumes:
+      - ./ghost:/home/ghost/ghost:cached
+      - ./.github:/home/ghost/.github:cached
+      - ghost-dev-data:/home/ghost/ghost/core/content/data
+      - ghost-dev-images:/home/ghost/ghost/core/content/images
+      - ghost-dev-media:/home/ghost/ghost/core/content/media
+      - ghost-dev-files:/home/ghost/ghost/core/content/files
+      - ghost-dev-logs:/home/ghost/ghost/core/content/logs
+      - shared-config:/mnt/shared-config:ro
+    environment:
+      NODE_ENV: development
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      database__client: pg
+      database__connection__host: postgres
+      database__connection__port: "5432"
+      database__connection__user: ghost
+      database__connection__password: ghost
+      database__connection__database: ghost_dev
+      server__host: 0.0.0.0
+      server__port: 2368
+      mail__transport: SMTP
+      mail__options__host: mailpit
+      mail__options__port: 1025
+      portal__url: /ghost/assets/portal/portal.min.js
+      comments__url: /ghost/assets/comments-ui/comments-ui.min.js
+      sodoSearch__url: /ghost/assets/sodo-search/sodo-search.min.js
+      sodoSearch__styles: /ghost/assets/sodo-search/main.css
+      signupForm__url: /ghost/assets/signup-form/signup-form.min.js
+      announcementBar__url: /ghost/assets/announcement-bar/announcement-bar.min.js
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:2368',{redirect:'manual'}).then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    ports:
+      - "2369:2368"
+
+  # All frontend dev servers — built image with all node_modules pre-installed
+  frontend-dev:
+    build:
+      context: ./
+      dockerfile: docker/frontend-dev/Dockerfile
+    container_name: ghost-dev-frontend
+    working_dir: /home/ghost
+    # Only mount source that changes frequently (Ember admin + Ghost admin code)
+    # Apps use the baked-in versions (no hot-reload, but they work)
+    volumes:
+      - ./ghost/admin:/home/ghost/ghost/admin:cached
+      - ./ghost/i18n:/home/ghost/ghost/i18n:cached
+      - ./.github:/home/ghost/.github:cached
+      - ./docker:/home/ghost/docker:cached
+      - ./apps:/home/ghost/apps:cached
+    environment:
+      NODE_ENV: development
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      GHOST_URL: http://ghost-dev:2368/
+    depends_on:
+      ghost-dev:
+        condition: service_healthy
+    healthcheck:
+      # Healthy once the React admin shell (apps/admin) is accepting connections.
+      # Ember's first build must complete before apps/admin starts, so this
+      # transitively confirms Ember is built too.
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5178').then(r=>process.exit(0)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 10s
+    ports:
+      - "4200:4200"
+      - "4201:4201"
+      - "5173:5173"
+      - "5174:5174"
+      - "5175:5175"
+      - "5176:5176"
+      - "5177:5177"
+      - "5178:5178"
+
+  # Caddy reverse proxy
+  ghost-dev-gateway:
+    build:
+      context: ./docker/dev-gateway
+      dockerfile: Dockerfile
+    container_name: ghost-dev-gateway
+    ports:
+      - "2368:80"
+    volumes:
+      - ./docker/dev-gateway/Caddyfile.all-container:/etc/caddy/Caddyfile:ro
+    environment:
+      GHOST_BACKEND: http://ghost-dev:2368
+      ADMIN_DEV_SERVER: http://ghost-dev-frontend:5178
+      ADMIN_LIVE_RELOAD_SERVER: http://ghost-dev-frontend:4201
+      PORTAL_DEV_SERVER: http://ghost-dev-frontend:5173
+      COMMENTS_DEV_SERVER: http://ghost-dev-frontend:5174
+      SIGNUP_DEV_SERVER: http://ghost-dev-frontend:5175
+      SEARCH_DEV_SERVER: http://ghost-dev-frontend:5176
+      ANNOUNCEMENT_DEV_SERVER: http://ghost-dev-frontend:5177
+      LEXICAL_DEV_SERVER: ""
+      ANALYTICS_PROXY_TARGET: ""
+      ACTIVITYPUB_PROXY_TARGET: ""
+    depends_on:
+      ghost-dev:
+        condition: service_healthy
+      frontend-dev:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  shared-config:
+  ghost-dev-data:
+  ghost-dev-images:
+  ghost-dev-media:
+  ghost-dev-files:
+  ghost-dev-logs:
+
+networks:
+  default:
+    name: ghost-dev

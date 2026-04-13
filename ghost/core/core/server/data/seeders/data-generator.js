@@ -7,7 +7,6 @@ const {faker} = require('@faker-js/faker');
 const {faker: americanFaker} = require('@faker-js/faker/locale/en_US');
 const crypto = require('crypto');
 const {Buffer} = require('node:buffer');
-const DatabaseInfo = require('@tryghost/database-info');
 const errors = require('@tryghost/errors');
 const importers = require('./importers').reduce((acc, val) => {
     acc[val.table] = val;
@@ -200,10 +199,6 @@ class DataGenerator {
 
         if (this.useTransaction) {
             await this.knex.transaction(async (transaction) => {
-                if (DatabaseInfo.isMySQL(this.knex)) {
-                    await transaction.raw('SET autocommit=0;');
-                }
-
                 await this.#run(transaction);
             }, {isolationLevel: 'read committed'});
         } else {
@@ -214,18 +209,6 @@ class DataGenerator {
     }
 
     async #run(transaction) {
-        if (DatabaseInfo.isMySQL(this.knex)) {
-            if (process.env.DISABLE_FAST_IMPORT) {
-                await transaction.raw('SET FOREIGN_KEY_CHECKS=0;');
-                await transaction.raw('SET unique_checks=0;');
-            } else {
-                await transaction.raw('ALTER INSTANCE DISABLE INNODB REDO_LOG;');
-                await transaction.raw('SET FOREIGN_KEY_CHECKS=0;');
-                await transaction.raw('SET unique_checks=0;');
-                await transaction.raw('SET GLOBAL local_infile=1;');
-            }
-        }
-
         if (this.willClearData) {
             await this.clearData(transaction);
         }
@@ -285,13 +268,6 @@ class DataGenerator {
                 baseUrl: this.baseUrl
             });
             await tableImporter.finalise();
-        }
-
-        // Re-enable the redo log because it's a persisted global
-        // Leaving it disabled can break the database in the event of an unexpected shutdown
-        // See https://dev.mysql.com/doc/refman/8.0/en/innodb-redo-log.html#innodb-disable-redo-logging
-        if (DatabaseInfo.isMySQL(this.knex) && !process.env.DISABLE_FAST_IMPORT) {
-            await transaction.raw('ALTER INSTANCE ENABLE INNODB REDO_LOG;');
         }
     }
 }

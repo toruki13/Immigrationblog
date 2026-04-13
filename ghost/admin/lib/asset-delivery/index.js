@@ -59,7 +59,20 @@ module.exports = {
         const fs = this.project.require('fs-extra');
         const walkSync = this.project.require('walk-sync');
 
-        const assetsOut = path.join(path.dirname(require.resolve('ghost')), `core/built/admin`);
+        try {
+            path.dirname(require.resolve('ghost'));
+        } catch (err) {
+            // The frontend-dev container serves Ember directly and doesn't contain the
+            // full Ghost core source tree, so there is nowhere meaningful to copy the
+            // built admin assets. Skipping this step still allows `ember serve` to run.
+            if (this.env !== 'production') {
+                return;
+            }
+
+            throw err;
+        }
+
+        const assetsOut = path.join(path.dirname(require.resolve('ghost')), 'core/built/admin');
         fs.removeSync(assetsOut);
         fs.ensureDirSync(assetsOut);
 

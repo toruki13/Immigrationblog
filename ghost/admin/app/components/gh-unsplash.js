@@ -8,6 +8,7 @@ const ONE_COLUMN_WIDTH = 540;
 const TWO_COLUMN_WIDTH = 940;
 
 export default class GhUnsplash extends Component {
+    @service router;
     @service unsplash;
     @service ui;
 

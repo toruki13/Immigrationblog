@@ -114,14 +114,10 @@ module.exports.truncate = async (tableName) => {
             await db.knex.raw('PRAGMA foreign_keys = ON;');
         }
         return;
-    } else if (module.exports.isPostgreSQL()) {
-        await db.knex.raw('TRUNCATE TABLE ?? RESTART IDENTITY CASCADE', [tableName]);
-        return;
     }
 
-    await db.knex.raw('SET FOREIGN_KEY_CHECKS=0;');
-    await db.knex(tableName).truncate();
-    await db.knex.raw('SET FOREIGN_KEY_CHECKS=1;');
+    // PostgreSQL
+    await db.knex.raw('TRUNCATE TABLE ?? RESTART IDENTITY CASCADE', [tableName]);
 };
 
 /**
@@ -134,7 +130,7 @@ const forceReinit = async () => {
 
 /**
  * Internal helper to attempt to truncate all tables as fast as possible
- * Has to run in a transaction for MySQL, otherwise the foreign key check does not work.
+ * Has to run in a transaction for PostgreSQL, otherwise the foreign key check does not work.
  * Sqlite3 has no truncate command.
  */
 const truncateAll = async () => {
@@ -188,23 +184,19 @@ const truncateAll = async () => {
         return;
     }
 
-    await db.knex.transaction(async (trx) => {
-        try {
-            await db.knex.raw('SET FOREIGN_KEY_CHECKS=0;').transacting(trx);
-            await sequence(tables.map(table => () => db.knex.raw('DELETE FROM ' + table + ';').transacting(trx)));
-            await db.knex.raw('SET FOREIGN_KEY_CHECKS=1;').transacting(trx);
-        } catch (err) {
-            // CASE: table does not exist || DB does not exist
-            // If the table or DB are not present, we can safely ignore
-            if (err.errno === 1146 || err.errno === 1049) {
-                return Promise.resolve();
-            }
-
-            throw err;
-        } finally {
-            debug('Database teardown end');
+    // Fallback: use DELETE for unsupported clients
+    try {
+        await sequence(tables.map(table => () => db.knex.raw('DELETE FROM ' + table + ';')));
+    } catch (err) {
+        // CASE: table does not exist
+        if (err.code === '42P01' || err.code === '3D000') {
+            return Promise.resolve();
         }
-    });
+
+        throw err;
+    } finally {
+        debug('Database teardown end');
+    }
 };
 
 /**

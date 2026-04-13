@@ -20,8 +20,12 @@ Ghost is a pnpm + Nx monorepo with three workspace groups:
 ### apps/* - React-based UI applications
 Two categories of apps:
 
-**Admin Apps** (embedded in Ghost Admin):
-- `admin-x-settings`, `admin-x-activitypub` - Settings and integrations
+**Admin Shell**:
+- `admin` - React outer shell (`apps/admin`). Entry point for the Ghost admin UI. Uses `createHashRouter` (basename `/ghost`) and owns all routing. Embeds `ghost/admin` (Ember) for routes still handled by Ember, and renders React apps directly for migrated routes. Served at port 5178 in dev.
+
+**Admin Apps** (rendered by the React shell):
+- `admin-x-settings` - Settings UI
+- `activitypub` - ActivityPub / social network integration
 - `posts`, `stats` - Post analytics and site-wide analytics
 - Built with Vite + React + `@tanstack/react-query`
 
@@ -121,25 +125,29 @@ pnpm dev:all                   # Include all optional services
 **Accessing Services:**
 - Ghost: `http://localhost:2368` (database: `ghost_dev`)
 - Mailpit UI: `http://localhost:8025` (email testing)
-- MySQL: `localhost:3306`
-- Redis: `localhost:6379`
+- Postgres: `localhost:5433`
 - Tinybird: `http://localhost:7181` (when analytics enabled)
 - MinIO Console: `http://localhost:9001` (when storage enabled)
 - MinIO S3 API: `http://localhost:9000` (when storage enabled)
 
 ## Architecture Patterns
 
-### Admin Apps Integration (Micro-Frontend)
+### Admin Apps Integration
+
+**Architecture: React outer shell + embedded Ember**
+
+`apps/admin` is the React outer shell that owns the admin UI. It uses `createHashRouter` (basename `/ghost`) for all routing:
+
+- **React-owned routes** (`/analytics`, `/settings/*`, `/activitypub/*`, `/members`, `/tags`, `/comments`, `/posts/analytics/:id/*`) render React apps directly.
+- **Ember-owned routes** (`/posts`, `/pages`, `/editor/*`, `/setup/*`, `/signin`, etc.) render `EmberFallback`, which signals `EmberRoot` to show the embedded Ember app.
+
+**Bridge:** `window.EmberBridge` (set by `ghost/admin/app/instance-initializers/ember-bridge-global.js`) connects the two runtimes. `apps/admin/src/ember-bridge/` contains React hooks for syncing auth state, data store changes, sidebar visibility, and routing.
 
 **Build Process:**
-1. Admin-x React apps build to `apps/*/dist` using Vite
-2. `ghost/admin/lib/asset-delivery` copies them to `ghost/core/core/built/admin/assets/*`
-3. Ghost admin serves from `/ghost/assets/{app-name}/{app-name}.js`
-
-**Runtime Loading:**
-- Ember admin uses `AdminXComponent` to dynamically import React apps
-- React components wrapped in Suspense with error boundaries
-- Apps receive config via `additionalProps()` method
+1. `ghost/admin` (Ember) builds to `ghost/admin/dist/`
+2. `ghost/admin/lib/asset-delivery` copies Ember's built assets to `ghost/core/core/built/admin/assets/`
+3. `apps/admin` (Vite) builds — `vite-ember-assets.ts` injects Ember's scripts/styles into the React HTML and copies Ember's assets alongside the React bundle
+4. `ghost/core` serves `apps/admin`'s combined build output from `/ghost/`
 
 ### Public Apps Integration
 
@@ -192,9 +200,10 @@ See `apps/portal/src/components/pages/email-receiving-faq.js` for a canonical ex
 Critical build order (Nx handles automatically):
 1. `shade` + `admin-x-design-system` build
 2. `admin-x-framework` builds (depends on #1)
-3. Admin apps build (depend on #2)
-4. `ghost/admin` builds (depends on #3, copies via asset-delivery)
-5. `ghost/core` serves admin build
+3. Admin apps build (`posts`, `stats`, `activitypub`, `admin-x-settings` — depend on #2)
+4. `ghost/admin` (Ember) builds (depends on #3 via asset-delivery, copies app bundles to `ghost/core/core/built/admin/assets/`)
+5. `apps/admin` (React shell) builds (depends on #4 — `vite-ember-assets.ts` reads `ghost/admin/dist/index.html` and merges assets into `ghost/core/core/built/admin/`)
+6. `ghost/core` serves the combined build from `/ghost/`
 
 ## CSS Architecture
 
@@ -241,7 +250,9 @@ Public-facing apps (`comments-ui`, `signup-form`, `sodo-search`, `portal`, `anno
 When the user asks you to create a commit or draft a commit message, load and follow the `commit` skill from `.agents/skills/commit`.
 
 ### When Working on Admin UI
-- **New features:** Build in React (`apps/admin-x-*` or `apps/posts`)
+- **New routes / shell changes:** Edit `apps/admin` (the React outer shell — routing, sidebar, layout)
+- **New feature pages:** Build in `apps/posts`, `apps/stats`, `apps/activitypub`, or `apps/admin-x-settings` depending on domain
+- **Ember → React migration:** Add the route to `apps/admin/src/routes.tsx`, remove it from `EMBER_ROUTES`, implement the page in React
 - **Use:** `admin-x-framework` for API hooks (`useBrowse`, `useEdit`, etc.)
 - **Use:** `shade` design system for new components (not admin-x-design-system)
 - **Translations:** Add to `ghost/i18n/locales/en/ghost.json`

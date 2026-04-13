@@ -128,7 +128,13 @@ module.exports = function (Bookshelf) {
 
         onFetchingCollection: function onFetchingCollection(model, columns, options) {
             if (options.forUpdate && options.transacting) {
-                options.query.forUpdate();
+                // PostgreSQL does not allow FOR UPDATE with DISTINCT (used by belongsToMany pivot joins).
+                // Locking the main model row (done in onFetching) is sufficient; skip locking relations.
+                const hasDistinct = options.query._statements &&
+                    options.query._statements.some(s => s.distinct === true);
+                if (!hasDistinct) {
+                    options.query.forUpdate();
+                }
             }
         },
 

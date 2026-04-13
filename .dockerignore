@@ -27,6 +27,8 @@ compose.yml
 docker
 !docker/**/*.entrypoint.sh
 !docker/**/*entrypoint.sh
+!docker/dev-gateway/run-frontend-dev.js
+!docker/frontend-dev/Dockerfile
 
 ghost/core/core/built/admin
 

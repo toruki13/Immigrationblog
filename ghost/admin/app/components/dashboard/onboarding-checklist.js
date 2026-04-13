@@ -7,6 +7,7 @@ import {inject as service} from '@ember/service';
 export default class OnboardingChecklist extends Component {
     @service modals;
     @service onboarding;
+    @service router;
 
     @inject config;
 

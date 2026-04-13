@@ -41,26 +41,26 @@ describe('Config Loader', function () {
         });
 
         it('env parameter is stronger than file', function () {
-            process.env.database__client = 'test';
+            process.env.database__client = 'pg';
 
             customConfig = loader.loadNconf({
                 baseConfigPath: path.join(__dirname, '../../../utils/fixtures/config'),
                 customConfigPath: path.join(__dirname, '../../../utils/fixtures/config')
             });
 
-            assert.equal(customConfig.get('database:client'), 'test');
+            assert.equal(customConfig.get('database:client'), 'pg');
         });
 
         it('argv is stronger than env parameter', function () {
-            process.env.database__client = 'test';
-            process.argv[2] = '--database:client=stronger';
+            process.env.database__client = 'pg';
+            process.argv[2] = '--database:client=sqlite3';
 
             customConfig = loader.loadNconf({
                 baseConfigPath: path.join(__dirname, '../../../utils/fixtures/config'),
                 customConfigPath: path.join(__dirname, '../../../utils/fixtures/config')
             });
 
-            assert.equal(customConfig.get('database:client'), 'stronger');
+            assert.equal(customConfig.get('database:client'), 'sqlite3');
         });
 
         it('argv or env is NOT stronger than overrides', function () {

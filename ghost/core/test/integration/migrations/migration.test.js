@@ -54,7 +54,8 @@ describe('Migrations', function () {
 
         it('should have idempotent migrations', async function () {
             // Delete all knowledge that we've run migrations so we can run them again
-            if (dbUtils.isMySQL()) {
+            // PostgreSQL uses case-insensitive LIKE (whereILike), SQLite uses whereLike
+            if (dbUtils.isPostgreSQL()) {
                 await db.knex('migrations').whereILike('version', `${currentMajor}.%`).del();
             } else {
                 await db.knex('migrations').whereLike('version', `${currentMajor}.%`).del();

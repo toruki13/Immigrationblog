@@ -3,14 +3,14 @@
         {{#if (feature "nightShift")}}
             <div class="gh-onboarding-ghost-logo-wrapper">
                 <video width="80" height="80" loop autoplay muted playsinline preload="metadata" style="width: 80px; height: 80px;" class="gh-onboarding-ghost-logo--dark" {{autoplay}}>
-                    <source src="assets/videos/logo-loader-dark.mp4" type="video/mp4" />
+                    <source src="{{this.router.rootURL}}assets/videos/logo-loader-dark.mp4" type="video/mp4" />
                 </video>
                 <div class="gh-onboarding-ghost-logo-overlay"></div>
             </div>
         {{else}}
             <div class="gh-onboarding-ghost-logo-wrapper">
                 <video width="80" height="80" loop autoplay muted playsinline preload="metadata" style="width: 80px; height: 80px;" class="gh-onboarding-ghost-logo--light" {{autoplay}}>
-                    <source src="assets/videos/logo-loader.mp4" type="video/mp4" />
+                    <source src="{{this.router.rootURL}}assets/videos/logo-loader.mp4" type="video/mp4" />
                 </video>
             </div>
         {{/if}}

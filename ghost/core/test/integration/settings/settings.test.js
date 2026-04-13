@@ -40,14 +40,14 @@ describe('Settings', function () {
         return db.knex('settings')
             .where('group', 'core')
             .whereNotIn('key', coreSettingKeys)
-            .count('*')
+            .count('* as count')
             .then(function (data) {
-                const countResult = data[0]['count(*)'];
+                const countResult = Number(data[0].count);
                 assert.equal(countResult, 0);
             })
             .catch(function (err) {
             // CASE: table does not exist
-                if (err.errno === 1146) {
+                if (err.code === '42P01' || err.errno === 1) {
                     return Promise.resolve();
                 }
                 throw err;
