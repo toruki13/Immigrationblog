@@ -68,6 +68,20 @@ describe('Models: crud', function () {
                 assert.equal(destroyStub.args[0][0], filteredOptions);
             });
         });
+
+        it('throws NotFoundError when the model does not exist', function () {
+            const unfilteredOptions = {id: 'ghost'};
+            const model = models.Base.Model.forge({});
+            sinon.stub(models.Base.Model, 'forge').returns(model);
+            sinon.stub(model, 'fetch').resolves(null);
+            sinon.stub(model, 'destroy');
+
+            return models.Base.Model.destroy(unfilteredOptions).then(() => {
+                throw new Error('Should not resolve');
+            }).catch((err) => {
+                assert.ok(err instanceof errors.NotFoundError);
+            });
+        });
     });
 
     describe('findOne', function () {
@@ -126,6 +140,18 @@ describe('Models: crud', function () {
             await models.Base.Model.findOne(data, unfilteredOptions);
 
             assert.equal(fetchStub.args[0][0].lock, 'forUpdate');
+        });
+
+        it('converts PostgreSQL unknown-column error (42703) to BadRequestError', async function () {
+            const model = models.Base.Model.forge({});
+            sinon.stub(models.Base.Model, 'forge').returns(model);
+            const pgError = Object.assign(new Error('column does not exist'), {code: '42703'});
+            sinon.stub(model, 'fetch').rejects(pgError);
+
+            await assert.rejects(
+                () => models.Base.Model.findOne({id: 1}, {}),
+                err => err instanceof errors.BadRequestError
+            );
         });
     });
 
@@ -257,6 +283,17 @@ describe('Models: crud', function () {
                 assert.equal(saveStub.args[0][1].method, 'insert');
                 assert.deepEqual(saveStub.args[0][1], filteredOptions);
             });
+        });
+
+        it('propagates DB errors (e.g. PostgreSQL unique constraint 23505) without swallowing them', async function () {
+            const data = {slug: 'duplicate'};
+            const model = models.Base.Model.forge({});
+            sinon.stub(models.Base.Model, 'forge').returns(model);
+            const uniqueError = Object.assign(new Error('duplicate key'), {code: '23505'});
+            sinon.stub(model, 'save').rejects(uniqueError);
+
+            const err = await models.Base.Model.add(data, {}).catch(e => e);
+            assert.equal(err.code, '23505');
         });
 
         it('sets model.hasTimestamps to false if options.importing is truthy', function () {

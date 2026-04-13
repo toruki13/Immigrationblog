@@ -33,6 +33,7 @@ class WebhooksService {
             return newWebhook;
         } catch (error) {
             if (error.errno === 1452
+                || error.code === '23503'
                 || (error.code === 'SQLITE_CONSTRAINT' && /SQLITE_CONSTRAINT: FOREIGN KEY constraint failed/.test(error.message))
                 || (error.code === 'SQLITE_CONSTRAINT_FOREIGNKEY')) {
                 throw new ValidationError({

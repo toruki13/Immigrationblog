@@ -113,29 +113,36 @@ export default class S3Storage extends StorageBase {
             });
         }
 
-        if (!options.multipartUploadThresholdBytes) {
+        // Coerce to Number — env vars arrive as strings when loaded from the environment
+        const multipartUploadThresholdBytes = Number(options.multipartUploadThresholdBytes);
+        const multipartChunkSizeBytes = Number(options.multipartChunkSizeBytes);
+
+        if (!multipartUploadThresholdBytes) {
             throw new errors.IncorrectUsageError({
                 message: tpl(messages.missingMultipartThreshold)
             });
         }
-        this.multipartUploadThresholdBytes = options.multipartUploadThresholdBytes;
+        this.multipartUploadThresholdBytes = multipartUploadThresholdBytes;
 
-        if (!options.multipartChunkSizeBytes) {
+        if (!multipartChunkSizeBytes) {
             throw new errors.IncorrectUsageError({
                 message: tpl(messages.missingMultipartChunkSize)
             });
         }
-        if (options.multipartChunkSizeBytes < MIN_MULTIPART_CHUNK_SIZE) {
+        if (multipartChunkSizeBytes < MIN_MULTIPART_CHUNK_SIZE) {
             throw new errors.IncorrectUsageError({
                 message: tpl(messages.multipartChunkSizeTooSmall)
             });
         }
-        this.multipartChunkSizeBytes = options.multipartChunkSizeBytes;
+        this.multipartChunkSizeBytes = multipartChunkSizeBytes;
+
+        // Normalize forcePathStyle — env vars arrive as strings ("true"/"false")
+        const forcePathStyle = options.forcePathStyle === true || (options.forcePathStyle as unknown) === 'true';
 
         const clientConfig: S3ClientConfig = {
             region: options.region,
             endpoint: options.endpoint,
-            forcePathStyle: options.forcePathStyle
+            forcePathStyle
         };
 
         if (options.accessKeyId && options.secretAccessKey) {

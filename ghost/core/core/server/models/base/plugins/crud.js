@@ -298,6 +298,9 @@ module.exports = function (Bookshelf) {
             return this.forge(options.destroyBy)
                 .fetch(options)
                 .then(function then(obj) {
+                    if (!obj) {
+                        throw new errors.NotFoundError();
+                    }
                     return obj.destroy(options);
                 });
         }

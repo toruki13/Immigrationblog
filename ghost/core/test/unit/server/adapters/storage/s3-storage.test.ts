@@ -91,6 +91,21 @@ describe('S3Storage', function () {
         }, /requires multipartChunkSizeBytes option/);
     });
 
+    it('accepts string values for numeric and boolean options (env var coercion)', function () {
+        // When config is loaded from environment variables, numbers and booleans arrive as strings.
+        // The constructor must coerce them so that forcePathStyle="false" is not treated as truthy
+        // and numeric thresholds are compared correctly.
+        assert.doesNotThrow(() => {
+            new S3Storage({
+                ...baseOptions,
+                multipartUploadThresholdBytes: '52428800' as unknown as number,
+                multipartChunkSizeBytes: '10485760' as unknown as number,
+                forcePathStyle: 'false' as unknown as boolean,
+                s3Client: {send: sinon.stub()} as unknown as S3Client
+            });
+        });
+    });
+
     it('strips leading and trailing slashes from config options', function () {
         const {storage} = createStorage({
             tenantPrefix: '/client-a/',

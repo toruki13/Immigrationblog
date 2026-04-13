@@ -90,30 +90,37 @@ async function createExportStream(options) {
                 const memberIds = batch.map(member => member.id);
                 
                 // Fetch related data for this batch
-                const [tiers, labels, stripeCustomers, subscriptions] = await Promise.all([
+                const [tiersRows, labelsRows, stripeCustomers, subscriptions] = await Promise.all([
+                    // Plain select + JS aggregation — GROUP_CONCAT is MySQL-only, STRING_AGG is PG-only
                     knex('members_products')
-                        .select('member_id', knex.raw('GROUP_CONCAT(product_id) as tiers'))
-                        .whereIn('member_id', memberIds)
-                        .groupBy('member_id'),
-                    
+                        .select('member_id', 'product_id')
+                        .whereIn('member_id', memberIds),
+
                     knex('members_labels')
-                        .select('member_id', knex.raw('GROUP_CONCAT(label_id) as labels'))
-                        .whereIn('member_id', memberIds)
-                        .groupBy('member_id'),
-                    
+                        .select('member_id', 'label_id')
+                        .whereIn('member_id', memberIds),
+
                     knex('members_stripe_customers')
                         .select('member_id', knex.raw('MIN(customer_id) as stripe_customer_id'))
                         .whereIn('member_id', memberIds)
                         .groupBy('member_id'),
-                    
+
                     knex('members_newsletters')
                         .distinct('member_id')
                         .whereIn('member_id', memberIds)
                 ]);
 
                 // Create maps for quick lookups
-                const tiersMap = new Map(tiers.map(row => [row.member_id, row.tiers]));
-                const labelsMap = new Map(labels.map(row => [row.member_id, row.labels]));
+                const tiersMap = tiersRows.reduce((map, row) => {
+                    const existing = map.get(row.member_id);
+                    map.set(row.member_id, existing ? `${existing},${row.product_id}` : row.product_id);
+                    return map;
+                }, new Map());
+                const labelsMap = labelsRows.reduce((map, row) => {
+                    const existing = map.get(row.member_id);
+                    map.set(row.member_id, existing ? `${existing},${row.label_id}` : row.label_id);
+                    return map;
+                }, new Map());
                 const stripeCustomerMap = new Map(stripeCustomers.map(row => [row.member_id, row.stripe_customer_id]));
                 const subscribedSet = new Set(subscriptions.map(row => row.member_id));
 
