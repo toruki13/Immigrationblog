@@ -1544,9 +1544,6 @@ importers:
       ember-cli-postcss:
         specifier: 6.0.1
         version: 6.0.1
-      ember-cli-shims:
-        specifier: 1.2.0
-        version: 1.2.0
       ember-cli-string-helpers:
         specifier: 6.1.0
         version: 6.1.0
@@ -13311,11 +13308,6 @@ packages:
 
   ember-cli-preprocess-registry@3.3.0:
     resolution: {integrity: sha512-60GYpw7VPeB7TvzTLZTuLTlHdOXvayxjAQ+IxM2T04Xkfyu75O2ItbWlftQW7NZVGkaCsXSRAmn22PG03VpLMA==}
-
-  ember-cli-shims@1.2.0:
-    resolution: {integrity: sha512-eqoRtBl4i27uyIvopQqJxWNy8PFCDoePWf6oqf+ICR75I1fx3jTvgatCpUUL5E44DENwyDYWgoIqL/KAO+UFwg==}
-    engines: {node: ^4.5 || 6.* || >= 7.*}
-    deprecated: 'See the README about migration instructions: https://github.com/ember-cli/ember-cli-shims'
 
   ember-cli-string-helpers@6.1.0:
     resolution: {integrity: sha512-Lw8B6MJx2n8CNF2TSIKs+hWLw0FqSYjr2/NRPyquyYA05qsl137WJSYW3ZqTsLgoinHat0DGF2qaCXocLhLmyA==}
@@ -36867,16 +36859,6 @@ snapshots:
       broccoli-funnel: 2.0.2
       debug: 3.2.7
       process-relative-require: 1.0.0
-    transitivePeerDependencies:
-      - supports-color
-
-  ember-cli-shims@1.2.0:
-    dependencies:
-      broccoli-file-creator: 1.2.0
-      broccoli-merge-trees: 2.0.1
-      ember-cli-version-checker: 2.2.0
-      ember-rfc176-data: 0.3.18
-      silent-error: 1.1.1
     transitivePeerDependencies:
       - supports-color
 
