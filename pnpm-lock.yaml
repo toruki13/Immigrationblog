@@ -1575,8 +1575,8 @@ importers:
         specifier: 6.1.1
         version: 6.1.1
       ember-drag-drop:
-        specifier: 0.4.8
-        version: 0.4.8(@babel/core@7.29.0)
+        specifier: 1.0.1
+        version: 1.0.1(@babel/core@7.29.0)(@ember/test-helpers@2.9.6(@babel/core@7.29.0)(ember-source@3.28.12(@babel/core@7.29.0)))
       ember-ella-sparse:
         specifier: 0.16.0
         version: 0.16.0(@babel/core@7.29.0)
@@ -12779,6 +12779,9 @@ packages:
     resolution: {integrity: sha512-aW35yZM6Bb/4oJlZncMH2LCoZtJXTRxES17vE3hoRiowU2kWHaJKFkSBDnDR+cm9J+9QhXmREyIfv0pji9ejCQ==}
     engines: {node: '>=10'}
 
+  decorator-transforms@1.2.1:
+    resolution: {integrity: sha512-UUtmyfdlHvYoX3VSG1w5rbvBQ2r5TX1JsE4hmKU9snleFymadA3VACjl6SRfi9YgBCSjBbfQvR1bs9PRW9yBKw==}
+
   decorator-transforms@2.3.1:
     resolution: {integrity: sha512-PDOk74Zqqy0946Lx4ckXxbgG6uhPScOICtrxL/pXmfznxchqNee0TaJISClGJQe6FeT8ohGqsOgdjfahm4FwEw==}
 
@@ -13420,8 +13423,13 @@ packages:
     resolution: {integrity: sha512-TovtNqCumzyAiW0/OisSkkVK93xnVF4NRU6+FN0ubpfwEOpRrmM2RqDwXI6YAChCgSHON1cz0DfQStpA1Gjuuw==}
     engines: {node: 10.* || >= 12}
 
-  ember-drag-drop@0.4.8:
-    resolution: {integrity: sha512-wir1V/8yNz4qjd7LuQ5OxVOGwSCAoEaDYf427HalhHsHDdy+Q+z1U/rvJwefQs/p2fb3sN1A44T8Eb+AH3nv0Q==}
+  ember-drag-drop@1.0.1:
+    resolution: {integrity: sha512-gPHRemPlUdjwNR+F5z/gzFQcRWIlRBBTKWrjuulqjOZU9djz9tPxFl9sOtOVQ4itGtzv4D1FCV3qdLrF0H2Upw==}
+    peerDependencies:
+      '@ember/test-helpers': '*'
+    peerDependenciesMeta:
+      '@ember/test-helpers':
+        optional: true
 
   ember-element-helper@0.2.0:
     resolution: {integrity: sha512-/WV0PNLyxDvLX/YETb/8KICFTr719OYqFWXqV5XUkh9YhhBGDU/mr1OtlQaWOlsx+sHm42HD2UAICecqex8ziw==}
@@ -36001,6 +36009,13 @@ snapshots:
     dependencies:
       mimic-response: 3.1.0
 
+  decorator-transforms@1.2.1(@babel/core@7.29.0):
+    dependencies:
+      '@babel/plugin-syntax-decorators': 7.28.6(@babel/core@7.29.0)
+      babel-import-util: 2.1.1
+    transitivePeerDependencies:
+      - '@babel/core'
+
   decorator-transforms@2.3.1(@babel/core@7.29.0):
     dependencies:
       '@babel/plugin-syntax-decorators': 7.28.6(@babel/core@7.29.0)
@@ -37271,9 +37286,12 @@ snapshots:
       - '@babel/core'
       - supports-color
 
-  ember-drag-drop@0.4.8(@babel/core@7.29.0):
+  ember-drag-drop@1.0.1(@babel/core@7.29.0)(@ember/test-helpers@2.9.6(@babel/core@7.29.0)(ember-source@3.28.12(@babel/core@7.29.0))):
     dependencies:
-      ember-cli-babel: 6.18.0(@babel/core@7.29.0)
+      '@embroider/addon-shim': 1.10.2
+      decorator-transforms: 1.2.1(@babel/core@7.29.0)
+    optionalDependencies:
+      '@ember/test-helpers': 2.9.6(@babel/core@7.29.0)(ember-source@3.28.12(@babel/core@7.29.0))
     transitivePeerDependencies:
       - '@babel/core'
       - supports-color

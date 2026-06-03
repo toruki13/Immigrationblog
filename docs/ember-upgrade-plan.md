@@ -34,11 +34,12 @@ Methodology: clear blockers **while still on 3.28** (verifiable), then bump core
 
 **Done (this branch):**
 - ✅ Converted the one app-owned jQuery file `app/components/gh-token-input/select-multiple.js` from `$(window).on/off` to native `addEventListener`/`removeEventListener`. App-owned jQuery usage is now **zero**. (eslint clean.)
+- ✅ **`ember-drag-drop` 0.4.8 → 1.0.1** — the v2-addon release keeps the same component API (`SortableObjects`, `draggable-object`, extendable classic `DraggableObject`) **and calls `sortEndAction` as a closure action instead of the removed `Component#sendAction`**. Upgraded with **zero app-code changes**: install resolves clean (no peer warnings), and `ember build` compiles past drag-drop (only the unrelated admin-x-framework/hooks Windows error remains). ⚠️ Runtime drag-to-reorder UX (tags/authors/labels + touch) still needs manual + acceptance-test verification on Linux/CI.
 
 **Remaining blockers — evidence-based (these are real work + need manual UI/test verification, ideally on Linux/CI where the full Ember build runs):**
 
 1. **`jquery-integration` can't be flipped off yet.** `config/optional-features.json` still has `jquery-integration: true` because **`liquid-fire` (2 files) and `liquid-wormhole` (2 files) use `this.$()`** internally (see `config/deprecation-workflow.js`). Used in: `editor/modals/publish-flow/options.hbs`, `gh-post-settings-menu.hbs`, `tag-form.hbs`. → upgrade liquid-fire/liquid-wormhole to jQuery-free versions (or replace) before setting the flag false.
-2. **`ember-drag-drop@0.4.8`** — unmaintained, uses `Component#sendAction` (removed in 4.0). Used in **4 app files** incl. `gh-token-input/trigger.hbs` (tag/author reordering). → replace (e.g. `ember-sortable` or native DnD) and verify reordering UX. **Highest-effort blocker.**
+2. ✅ ~~**`ember-drag-drop@0.4.8`** — uses removed `Component#sendAction`.~~ **RESOLVED** by bumping to `1.0.1` (API-compatible v2 addon, closure-action `sortEndAction`). No app-code changes. Still pending: runtime UX verification.
 3. **`ember-cli-shims@1.2.0`** — incompatible with 4.x; remove. Note 5 files use `import Ember from 'ember'` (the module import, which is fine in 4.x); verify the build after removal.
 4. **Addons pulling `ember-cli-babel@6`** (Ember Global deprecation): `ember-power-datepicker@0.8.1` (1 file → `ember-power-calendar@0.15+`), `ember-drag-drop` (see #2), `ember-mocha@0.16.2` (test framework → newer).
 5. Bump `ember-source`/`ember-cli`/`ember-data` to 4.x (target **4.12 LTS**); clear Classic/array-prototype-extension deprecations via the workflow.
