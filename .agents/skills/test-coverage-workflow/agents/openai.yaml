@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Coverage Workflow"
+  short_description: "Plan real Ghost test and coverage gates"
+  default_prompt: "Use -coverage-workflow to choose and verify the right Ghost unit, integration, e2e, and coverage commands."

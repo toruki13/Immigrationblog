@@ -39,7 +39,7 @@ jobs:
             - [ ]  Uses the correct utils
             - [ ]  Contains a minimal changeset
             - [ ]  Does not mix DDL/DML operations
-            - [ ]  Tested in MySQL and SQLite
+            - [ ]  Tested in Postgres and SQLite
 
             ### Schema changes
 

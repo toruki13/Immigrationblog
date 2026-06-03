@@ -410,16 +410,16 @@ jobs:
     needs: [job_setup]
     if: needs.job_setup.outputs.changed_core == 'true' && needs.job_setup.outputs.is_tag != 'true'
     services:
-      mysql:
-        image: ${{ matrix.env.DB == 'mysql8' && 'mysql:8.0' || '' }}
+      postgres:
+        image: ${{ matrix.env.DB == 'pg' && 'postgres:16' || '' }}
         env:
-          MYSQL_DATABASE: ghost_testing
-          MYSQL_ROOT_PASSWORD: root
+          POSTGRES_USER: ghost
+          POSTGRES_PASSWORD: ghost
+          POSTGRES_DB: ghost_testing
         ports:
-          - 3306
+          - 5433:5432
         options: >-
-          --tmpfs /var/lib/mysql
-          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-cmd "pg_isready -U ghost -d ghost_testing"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=12
@@ -427,8 +427,8 @@ jobs:
       matrix:
         node: ${{ fromJSON(needs.job_setup.outputs.node_test_matrix) }}
         env:
-          - DB: mysql8
-            NODE_ENV: testing-mysql
+          - DB: pg
+            NODE_ENV: testing-pg
         include:
           - node: ${{ needs.job_setup.outputs.node_version }}
             env:
@@ -461,12 +461,13 @@ jobs:
         if: contains(matrix.env.DB, 'sqlite')
         run: echo "database__connection__filename=/dev/shm/ghost-test.db" >> $GITHUB_ENV
 
-      - name: Set env vars (MySQL)
-        if: contains(matrix.env.DB, 'mysql')
+      - name: Set env vars (Postgres)
+        if: contains(matrix.env.DB, 'pg')
         run: |
           echo "database__connection__host=127.0.0.1" >> $GITHUB_ENV
-          echo "database__connection__port=${{ job.services.mysql.ports['3306'] }}" >> $GITHUB_ENV
-          echo "database__connection__password=root" >> $GITHUB_ENV
+          echo "database__connection__port=5433" >> $GITHUB_ENV
+          echo "database__connection__user=ghost" >> $GITHUB_ENV
+          echo "database__connection__password=ghost" >> $GITHUB_ENV
 
       - name: E2E tests
         run: pnpm nx run ghost:test:ci:e2e
@@ -475,7 +476,7 @@ jobs:
         run: pnpm nx run ghost:test:ci:integration
 
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
-        if: matrix.node == env.NODE_VERSION && contains(matrix.env.DB, 'mysql')
+        if: matrix.node == env.NODE_VERSION && contains(matrix.env.DB, 'pg')
         with:
           name: e2e-coverage
           path: |
@@ -494,16 +495,16 @@ jobs:
     needs: [job_setup]
     if: needs.job_setup.outputs.changed_core == 'true' && needs.job_setup.outputs.is_tag != 'true'
     services:
-      mysql:
-        image: ${{ matrix.env.DB == 'mysql8' && 'mysql:8.0' || '' }}
+      postgres:
+        image: ${{ matrix.env.DB == 'pg' && 'postgres:16' || '' }}
         env:
-          MYSQL_DATABASE: ghost_testing
-          MYSQL_ROOT_PASSWORD: root
+          POSTGRES_USER: ghost
+          POSTGRES_PASSWORD: ghost
+          POSTGRES_DB: ghost_testing
         ports:
-          - 3306
+          - 5433:5432
         options: >-
-          --tmpfs /var/lib/mysql
-          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-cmd "pg_isready -U ghost -d ghost_testing"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=12
@@ -512,8 +513,8 @@ jobs:
         include:
           - node: ${{ needs.job_setup.outputs.node_version }}
             env:
-              DB: mysql8
-              NODE_ENV: testing-mysql
+              DB: pg
+              NODE_ENV: testing-pg
           - node: ${{ needs.job_setup.outputs.node_version }}
             env:
               DB: sqlite3
@@ -542,12 +543,13 @@ jobs:
         if: contains(matrix.env.DB, 'sqlite')
         run: echo "database__connection__filename=/dev/shm/ghost-test.db" >> $GITHUB_ENV
 
-      - name: Set env vars (MySQL)
-        if: contains(matrix.env.DB, 'mysql')
+      - name: Set env vars (Postgres)
+        if: contains(matrix.env.DB, 'pg')
         run: |
           echo "database__connection__host=127.0.0.1" >> $GITHUB_ENV
-          echo "database__connection__port=${{ job.services.mysql.ports['3306'] }}" >> $GITHUB_ENV
-          echo "database__connection__password=root" >> $GITHUB_ENV
+          echo "database__connection__port=5433" >> $GITHUB_ENV
+          echo "database__connection__user=ghost" >> $GITHUB_ENV
+          echo "database__connection__password=ghost" >> $GITHUB_ENV
 
       - name: Legacy tests
         run: pnpm nx run ghost:test:ci:legacy

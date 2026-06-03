@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dev Flow Optimization"
+  short_description: "Speed up Ghost local and CI workflows"
+  default_prompt: "Use -flow-optimization to make Ghost development, builds, and CI feedback faster without hiding required checks."

@@ -8,7 +8,7 @@ Welcome to the Ghost contributor documentation! This guide will help you underst
 
 - **Node.js** - Recommended to install via [nvm](https://github.com/nvm-sh/nvm)
 - **pnpm** - Package manager
-- **Docker** - For MySQL database and development services
+- **Docker** - For the Postgres database and development services
 
 ### Initial Setup
 

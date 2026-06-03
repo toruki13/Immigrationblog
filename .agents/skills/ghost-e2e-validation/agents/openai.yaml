@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ghost E2E Validation"
+  short_description: "Run focused Playwright and core e2e checks"
+  default_prompt: "Use -e2e-validation to validate a Ghost change with the smallest real e2e suite that proves it."

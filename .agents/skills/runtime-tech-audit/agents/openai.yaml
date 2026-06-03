@@ -1,0 +1,4 @@
+interface:
+  display_name: "Runtime Tech Audit"
+  short_description: "Audit Ghost DB/runtime dependencies safely"
+  default_prompt: "Use -tech-audit to decide whether a Ghost database, compose service, dependency, or runtime config can be removed safely."
