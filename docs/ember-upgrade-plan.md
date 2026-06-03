@@ -28,12 +28,22 @@ Bumped in `ghost/admin/package.json`:
 - `ember build` (node 22.18.0) compiles the full app: ember-cli 3.28.6 + Broccoli + webpack built **4173 modules** and emitted `app` + `tests` bundles. No 3.28 / addon / template compile errors — only normal deprecation warnings (`has-block`, `jquery-integration`, Ember Global via old `ember-cli-babel@6`).
 - The build's only hard error is `Can't resolve '@tryghost/admin-x-framework/hooks'` — **unrelated to Ember**; it's the pre-existing Windows blocker where the `admin-x-*` Vite packages don't build (posix-only `__dirname`/glob assumptions). A green end-to-end Ember build needs those packages built (CI/Linux, or the cross-platform Vite fix).
 
-### ⬜ Step 2 — 3.28 → 4.x (the big one)
-Blockers to clear first (surfaced by the deprecation output):
-- Remove jQuery: migrate the 1 `this.$()` usage; remove `@ember/jquery`; set `jquery-integration: false` via `@ember/optional-features`.
-- Remove `ember-cli-shims@1.2.0` (incompatible with 4.x).
-- Replace/upgrade addons still pulling `ember-cli-babel@6` (Ember Global deprecation): `ember-power-datepicker@0.8.1` (→ `ember-power-calendar@0.15`), `ember-drag-drop@0.4.8`, `ember-mocha@0.16.2`.
-- Bump `ember-data` to 4.x; clear Classic/array-prototype-extension deprecations via the workflow.
+### 🔶 Step 2 — 3.28 → 4.x (the big one) — IN PROGRESS (prep on 3.28)
+
+Methodology: clear blockers **while still on 3.28** (verifiable), then bump core.
+
+**Done (this branch):**
+- ✅ Converted the one app-owned jQuery file `app/components/gh-token-input/select-multiple.js` from `$(window).on/off` to native `addEventListener`/`removeEventListener`. App-owned jQuery usage is now **zero**. (eslint clean.)
+
+**Remaining blockers — evidence-based (these are real work + need manual UI/test verification, ideally on Linux/CI where the full Ember build runs):**
+
+1. **`jquery-integration` can't be flipped off yet.** `config/optional-features.json` still has `jquery-integration: true` because **`liquid-fire` (2 files) and `liquid-wormhole` (2 files) use `this.$()`** internally (see `config/deprecation-workflow.js`). Used in: `editor/modals/publish-flow/options.hbs`, `gh-post-settings-menu.hbs`, `tag-form.hbs`. → upgrade liquid-fire/liquid-wormhole to jQuery-free versions (or replace) before setting the flag false.
+2. **`ember-drag-drop@0.4.8`** — unmaintained, uses `Component#sendAction` (removed in 4.0). Used in **4 app files** incl. `gh-token-input/trigger.hbs` (tag/author reordering). → replace (e.g. `ember-sortable` or native DnD) and verify reordering UX. **Highest-effort blocker.**
+3. **`ember-cli-shims@1.2.0`** — incompatible with 4.x; remove. Note 5 files use `import Ember from 'ember'` (the module import, which is fine in 4.x); verify the build after removal.
+4. **Addons pulling `ember-cli-babel@6`** (Ember Global deprecation): `ember-power-datepicker@0.8.1` (1 file → `ember-power-calendar@0.15+`), `ember-drag-drop` (see #2), `ember-mocha@0.16.2` (test framework → newer).
+5. Bump `ember-source`/`ember-cli`/`ember-data` to 4.x (target **4.12 LTS**); clear Classic/array-prototype-extension deprecations via the workflow.
+
+**Why not bump core now:** blockers #1/#2 will break animations and drag-reordering until their addons are migrated, and that behaviour needs manual verification + a green `ghost/admin` test run — not reliably doable on this Windows box (full Ember build also needs the `admin-x-*` Vite packages, which don't build on Windows). Do the addon migrations + core bump where the test suite runs.
 
 ### ⬜ Step 3 — 4.x → 4.12 LTS → 5.x → 5.12 LTS → 6.x
 Each: bump `ember-source`/`ember-cli`/`ember-data`, update addons to compatible versions, clear deprecations, keep the Ember test suite (`ghost/admin` `pnpm test`) green. Adopt Embroider/Vite build for the main build-speed payoff.

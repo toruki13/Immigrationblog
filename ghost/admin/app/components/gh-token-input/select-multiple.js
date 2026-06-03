@@ -1,11 +1,12 @@
-import $ from 'jquery';
 import PowerSelectMultiple from 'ember-power-select/components/power-select-multiple';
 import {action} from '@ember/object';
 import {bind} from '@ember/runloop';
 import {tagName} from '@ember-decorators/component';
 
-// TODO: convert from jQuery to native DOM
-const END_ACTIONS = 'click.ghToken mouseup.ghToken touchend.ghToken';
+// Native DOM equivalents of the previous jQuery `click.ghToken mouseup.ghToken
+// touchend.ghToken` namespaced events. We keep a stable bound listener reference
+// (this._allowFocusListener) so add/removeEventListener pair up correctly.
+const END_EVENTS = ['click', 'mouseup', 'touchend'];
 
 // triggering focus on the search input within ESA's onfocus event breaks the
 // drag-n-drop functionality in ember-drag-drop so we watch for events that
@@ -20,7 +21,7 @@ class GhTokenInputSelectMultiple extends PowerSelectMultiple {
         super.willDestroyElement(...arguments);
 
         if (this._allowFocusListener) {
-            $(window).off(END_ACTIONS, this._allowFocusListener);
+            END_EVENTS.forEach(eventName => window.removeEventListener(eventName, this._allowFocusListener));
         }
     }
 
@@ -53,14 +54,14 @@ class GhTokenInputSelectMultiple extends PowerSelectMultiple {
 
             this._allowFocusListener = bind(this, this._allowFocus);
 
-            $(window).on(END_ACTIONS, this._allowFocusListener);
+            END_EVENTS.forEach(eventName => window.addEventListener(eventName, this._allowFocusListener));
         }
     }
 
     _allowFocus() {
         this._canFocus = true;
 
-        $(window).off(END_ACTIONS, this._allowFocusListener);
+        END_EVENTS.forEach(eventName => window.removeEventListener(eventName, this._allowFocusListener));
         this._allowFocusListener = null;
     }
 }
