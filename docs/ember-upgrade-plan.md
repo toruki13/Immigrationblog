@@ -21,7 +21,17 @@ The Ember build's own guard (`ghost/admin/lib/check-node-version.js`) **rejects 
 Bumped in `ghost/admin/package.json`:
 - `ember-source` 3.24.0 → **3.28.12**
 - `ember-cli` 3.24.0 → **3.28.6**
-- `ember-data` 3.24.0 → **3.28.13**
+- `ember-data` **kept at 3.24.0** (deferred — see below)
+
+> **⚠️ ember-data stays at 3.24.** It was initially bumped to 3.28.13, but the
+> Ember admin test suite revealed that ember-data 3.28.13 crashes the app at
+> boot: `TypeError: Cannot read properties of null (reading 'getErrors')` in
+> `@ember-data/model`'s `errors` computed (null `recordData`) during route/class
+> setup, failing nearly every acceptance test. Reverting **only** ember-data to
+> 3.24.0 (ember-source/cli stay at 3.28) fixed it — Authentication went from
+> all-failing to 14/16 passing. ember-source and ember-data version
+> independently, so this is a valid intermediate. Upgrading ember-data is its
+> own follow-up step (investigate the 3.28 recordData/errors incompatibility).
 
 **Verification:**
 - `pnpm install` resolves cleanly — no new peer-dependency conflicts referencing ember-source/cli/data (only pre-existing react/codemirror/vite/knex warnings).
