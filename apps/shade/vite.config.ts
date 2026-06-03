@@ -32,12 +32,12 @@ export default (function viteConfig() {
             outDir: 'es',
             lib: {
                 formats: ['es'],
-                entry: glob.sync(resolve(__dirname, 'src/**/*.{ts,tsx}')).reduce((entries, libpath) => {
+                entry: glob.sync(resolve(__dirname, 'src/**/*.{ts,tsx}').replace(/\\/g, '/')).reduce((entries, libpath) => {
                     if (libpath.includes('.stories.') || libpath.endsWith('.d.ts')) {
                         return entries;
                     }
 
-                    const outPath = libpath.replace(resolve(__dirname, 'src') + '/', '').replace(/\.(ts|tsx)$/, '');
+                    const outPath = libpath.replace(resolve(__dirname, 'src').replace(/\\/g, '/') + '/', '').replace(/\.(ts|tsx)$/, '');
                     entries[outPath] = libpath;
                     return entries;
                 }, {} as Record<string, string>)
@@ -59,7 +59,7 @@ export default (function viteConfig() {
                         return true;
                     }
 
-                    return !source.includes(__dirname);
+                    return !source.replace(/\\/g, '/').includes(__dirname.replace(/\\/g, '/'));
                 }
             }
         },
