@@ -112,7 +112,18 @@ module.exports = {
                 if (this.env === 'production') {
                     fs.copySync(adminXPath, assetsAdminXPath, {overwrite: true, dereference: true});
                 } else {
-                    fs.ensureSymlinkSync(adminXPath, assetsAdminXPath);
+                    // Symlink for fast dev/test rebuilds. Windows without Developer
+                    // Mode / admin rights can't create symlinks (EPERM/EACCES), so
+                    // fall back to copying there so dev and test builds still work.
+                    try {
+                        fs.ensureSymlinkSync(adminXPath, assetsAdminXPath);
+                    } catch (err) {
+                        if (err && (err.code === 'EPERM' || err.code === 'EACCES')) {
+                            fs.copySync(adminXPath, assetsAdminXPath, {overwrite: true, dereference: true});
+                        } else {
+                            throw err;
+                        }
+                    }
                 }
             } else  {
                 console.log(`${app} folder not found`);
