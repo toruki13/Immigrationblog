@@ -6,6 +6,7 @@ import {authenticateSession, invalidateSession} from 'ember-simple-auth/test-sup
 import {cleanupMockAnalyticsApps, mockAnalyticsApps} from '../helpers/mock-analytics-apps';
 import {click, currentRouteName, currentURL, fillIn, find, findAll, triggerKeyEvent, waitFor, waitUntil} from '@ember/test-helpers';
 import {expect} from 'chai';
+import sinon from 'sinon';
 import {run} from '@ember/runloop';
 import {setupApplicationTest} from 'ember-mocha';
 import {setupMirage} from 'ember-cli-mirage/test-support';
@@ -321,13 +322,12 @@ describe('Acceptance: Authentication', function () {
     });
 
     describe('editor', function () {
-        let origDebounce = run.debounce;
-        let origThrottle = run.throttle;
-
-        // we don't want the autosave interfering in this test
+        // we don't want the autosave interfering in this test. ember-source 3.28
+        // makes the `run` methods read-only, so stub via sinon instead of
+        // reassigning `run.debounce`/`run.throttle` directly.
         beforeEach(function () {
-            run.debounce = function () { };
-            run.throttle = function () { };
+            sinon.stub(run, 'debounce').callsFake(() => {});
+            sinon.stub(run, 'throttle').callsFake(() => {});
         });
 
         it('displays re-auth modal attempting to save with invalid session', async function () {
@@ -385,8 +385,7 @@ describe('Acceptance: Authentication', function () {
 
         // don't clobber debounce/throttle for future tests
         afterEach(function () {
-            run.debounce = origDebounce;
-            run.throttle = origThrottle;
+            sinon.restore();
         });
     });
 });
