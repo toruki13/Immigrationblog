@@ -1,4 +1,5 @@
 import ctrlOrCmd from 'ghost-admin/utils/ctrl-or-cmd';
+import sinon from 'sinon';
 import windowProxy from 'ghost-admin/utils/window-proxy';
 import {Response} from 'miragejs';
 import {afterEach, beforeEach, describe, it} from 'mocha';
@@ -321,13 +322,12 @@ describe('Acceptance: Authentication', function () {
     });
 
     describe('editor', function () {
-        let origDebounce = run.debounce;
-        let origThrottle = run.throttle;
-
-        // we don't want the autosave interfering in this test
+        // we don't want the autosave interfering in this test. ember-source 3.28
+        // makes the `run` methods read-only, so stub via sinon instead of
+        // reassigning `run.debounce`/`run.throttle` directly.
         beforeEach(function () {
-            run.debounce = function () { };
-            run.throttle = function () { };
+            sinon.stub(run, 'debounce').callsFake(() => {});
+            sinon.stub(run, 'throttle').callsFake(() => {});
         });
 
         it('displays re-auth modal attempting to save with invalid session', async function () {
@@ -383,10 +383,8 @@ describe('Acceptance: Authentication', function () {
             await triggerKeyEvent('[data-test-modal="re-authenticate"]', 'keydown', 'Escape');
         });
 
-        // don't clobber debounce/throttle for future tests
         afterEach(function () {
-            run.debounce = origDebounce;
-            run.throttle = origThrottle;
+            sinon.restore();
         });
     });
 });
