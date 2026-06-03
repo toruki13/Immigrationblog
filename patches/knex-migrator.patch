@@ -2,7 +2,7 @@ diff --git a/CHANGELOG.md b/CHANGELOG.md
 deleted file mode 100644
 index 6033d6b84d30e56d6fe6f40b7c7c6b18430a5594..0000000000000000000000000000000000000000
 diff --git a/lib/database.js b/lib/database.js
-index b755b9ecb8ee47c71af8b432d9a09f7a5d88d649..bda45d8ae7d9c7a4f918b0f8ea606bd55c668627 100644
+index b755b9ecb8ee47c71af8b432d9a09f7a5d88d649..c97fa9131ce657c6aafad5f13d0924f0c28556b2 100644
 --- a/lib/database.js
 +++ b/lib/database.js
 @@ -33,6 +33,10 @@ exports.connect = function connect(options) {
@@ -16,36 +16,81 @@ index b755b9ecb8ee47c71af8b432d9a09f7a5d88d649..bda45d8ae7d9c7a4f918b0f8ea606bd5
      return knex(options);
  };
  
-@@ -108,6 +112,28 @@ exports.createDatabaseIfNotExist = function createDatabaseIfNotExist(dbConfig) {
+@@ -108,6 +112,73 @@ exports.createDatabaseIfNotExist = function createDatabaseIfNotExist(dbConfig) {
      // @NOTE: Skip, because sqlite3 is a file based database.
      if (DatabaseInfo.isSQLiteConfig(dbConfig)) {
          return Promise.resolve();
 +    } else if (dbConfig.client === 'pg') {
-+        // PostgreSQL: assume database already exists (created by Railway/Docker)
-+        const connection = exports.connect({
++        // PostgreSQL: CREATE DATABASE cannot run while connected to the target
++        // db (and pg always requires connecting to *a* database), so connect to
++        // the maintenance "postgres" database and create the target if missing.
++        // This is needed for the test harness, which generates a unique
++        // per-run database name. Managed providers (e.g. Railway) pre-create
++        // the db and may not grant CREATE DATABASE — we fall back to assuming
++        // it already exists in that case.
++        const adminConnection = exports.connect({
 +            client: dbConfig.client,
-+            connection: dbConfig.connection,
++            connection: Object.assign({}, dbConfig.connection, {database: 'postgres'}),
 +            searchPath: ['public']
 +        });
-+        return exports.ensureConnectionWorks(connection)
++        return exports.ensureConnectionWorks(adminConnection)
 +            .then(function () {
-+                debug('PostgreSQL database exists: ' + name);
-+                return Promise.resolve();
++                return adminConnection.raw('SELECT 1 FROM pg_database WHERE datname = ?', [name]);
++            })
++            .then(function (result) {
++                if (result.rows && result.rows.length) {
++                    debug('PostgreSQL database exists: ' + name);
++                    return Promise.resolve();
++                }
++                debug('Create database', name);
++                // identifier can't be parameterized; name comes from trusted config
++                return adminConnection.raw('CREATE DATABASE "' + name + '"');
++            })
++            .catch(function (err) {
++                // CASE: another worker created it first (duplicate_database)
++                if (err && err.code === '42P04') {
++                    return Promise.resolve();
++                }
++                throw err;
 +            })
 +            .finally(function () {
 +                return new Promise(function (resolve, reject) {
-+                    connection.destroy(function (err) {
-+                        if (err) {
-+                            return reject(err);
++                    adminConnection.destroy(function (destroyErr) {
++                        if (destroyErr) {
++                            return reject(destroyErr);
 +                        }
 +                        resolve();
 +                    });
 +                });
++            })
++            .catch(function () {
++                // Fallback for managed providers where connecting to "postgres"
++                // or running CREATE DATABASE is not permitted: assume the target
++                // database exists and just verify connectivity.
++                const connection = exports.connect({
++                    client: dbConfig.client,
++                    connection: dbConfig.connection,
++                    searchPath: ['public']
++                });
++                return exports.ensureConnectionWorks(connection)
++                    .then(function () {
++                        debug('PostgreSQL database assumed to exist: ' + name);
++                    })
++                    .finally(function () {
++                        return new Promise(function (resolve, reject) {
++                            connection.destroy(function (destroyErr) {
++                                if (destroyErr) {
++                                    return reject(destroyErr);
++                                }
++                                resolve();
++                            });
++                        });
++                    });
 +            });
      } else if (!DatabaseInfo.isMySQLConfig(dbConfig)) {
          return Promise.reject(new errors.KnexMigrateError({
              message: 'Database is not supported.'
-@@ -202,6 +228,15 @@ exports.drop = function drop(options) {
+@@ -202,6 +273,15 @@ exports.drop = function drop(options) {
                      err: err
                  }));
              });
