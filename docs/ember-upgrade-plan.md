@@ -39,10 +39,16 @@ Methodology: clear blockers **while still on 3.28** (verifiable), then bump core
 
 **Remaining blockers — evidence-based (these are real work + need manual UI/test verification, ideally on Linux/CI where the full Ember build runs):**
 
-1. **`jquery-integration` can't be flipped off yet.** `config/optional-features.json` still has `jquery-integration: true` because **`liquid-fire` (2 files) and `liquid-wormhole` (2 files) use `this.$()`** internally (see `config/deprecation-workflow.js`). Used in: `editor/modals/publish-flow/options.hbs`, `gh-post-settings-menu.hbs`, `tag-form.hbs`. → upgrade liquid-fire/liquid-wormhole to jQuery-free versions (or replace) before setting the flag false.
+1. **`jquery-integration` can't be flipped off yet** — gated on a `liquid-fire`/`liquid-wormhole` migration that needs **runtime verification** (animations/modals/transitions), so it's deferred to a test-capable env. Concrete plan:
+   - Target versions are clean (no jQuery, modern babel): `liquid-fire` 0.34 → **0.37.1**, `liquid-wormhole` 3.0.1 → **6.0.0** (peers `liquid-fire@^0.37.1`).
+   - ⚠️ Two app files need rewriting against the new major:
+     - `app/services/liquid-wormhole.js` **overrides an internal addon method** (pinned to a specific upstream source line) — re-derive against v6.
+     - `app/transitions/wormhole.js` uses jQuery `this.newElement.find('.liquid-wormhole-element:last-child')` — migrate to native DOM (modern liquid-fire passes native nodes).
+   - Template API (`{{#liquid-if}}`, `<LiquidWormhole>`, `liquid-container`) appears stable.
+   - After bump+rewrites, set `jquery-integration: false` and remove `@ember/jquery`; then **manually verify**: fullscreen modals (`gh-fullscreen-modal`), publish-flow section animations, post-settings-menu, tag-form collapsibles.
 2. ✅ ~~**`ember-drag-drop@0.4.8`** — uses removed `Component#sendAction`.~~ **RESOLVED** by bumping to `1.0.1` (API-compatible v2 addon, closure-action `sortEndAction`). No app-code changes. Still pending: runtime UX verification.
 3. ✅ ~~**`ember-cli-shims@1.2.0`** — incompatible with 4.x.~~ **REMOVED** and build-verified (the `import Ember from 'ember'` module comes from ember-source).
-4. **`ember-power-datepicker@0.8.1`** (1 file) → `1.0.7` (+ `ember-power-calendar@1.8.1`) to drop `ember-cli-babel@6`. Note: `ember-mocha` is already at latest (0.16.2); its `ember-cli-babel@6` pull is transitive via `ember-cli-test-loader` and only triggers a cosmetic Ember Global deprecation — no action available/needed for the 4.x bump.
+4. **`ember-power-datepicker@0.8.1` → `1.0.7`** — ⚠️ **not isolated.** 1.0.7 peers on `ember-basic-dropdown@^8.6.1`, but the repo pins `ember-basic-dropdown` to `6.0.2` (root `pnpm.overrides`) and `ember-power-select@6.0.1` (used in **31 files**) is coupled to that version. So this cascades into a coordinated `ember-power-select` + `ember-basic-dropdown` + `ember-power-calendar` upgrade — do it as its own task, with power-select regression testing. Note: `ember-mocha` is already at latest (0.16.2); its `ember-cli-babel@6` pull is transitive (via `ember-cli-test-loader`) and only a cosmetic Ember Global deprecation — no action needed.
 5. Bump `ember-source`/`ember-cli`/`ember-data` to 4.x (target **4.12 LTS**); clear Classic/array-prototype-extension deprecations via the workflow.
 
 **Why not bump core now:** blockers #1/#2 will break animations and drag-reordering until their addons are migrated, and that behaviour needs manual verification + a green `ghost/admin` test run — not reliably doable on this Windows box (full Ember build also needs the `admin-x-*` Vite packages, which don't build on Windows). Do the addon migrations + core bump where the test suite runs.
